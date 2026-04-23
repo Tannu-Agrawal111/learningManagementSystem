@@ -2,6 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area 
+} from 'recharts';
+import { 
   Plus, 
   Users, 
   FileText, 
@@ -15,7 +18,9 @@ import {
   X,
   ExternalLink,
   ChevronRight,
-  TrendingUp
+  TrendingUp,
+  Tag,
+  Trash2
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import './Instructor.css';
@@ -24,12 +29,15 @@ const InstructorDashboard = () => {
   const { user } = useContext(AuthContext);
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activityData, setActivityData] = useState([]);
   const [editingCourse, setEditingCourse] = useState(null);
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
+  const [editBenefits, setEditBenefits] = useState(['']);
 
   useEffect(() => {
     fetchCourses();
+    fetchActivity();
   }, []);
 
   const fetchCourses = async () => {
@@ -49,6 +57,18 @@ const InstructorDashboard = () => {
     }
   };
 
+  const fetchActivity = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/instructor/activity', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        setActivityData(await res.json());
+      }
+    } catch (err) { console.error(err); }
+  };
+
   const handleEditCourse = async (e) => {
     e.preventDefault();
     try {
@@ -59,7 +79,13 @@ const InstructorDashboard = () => {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ title: editTitle, description: editDesc }),
+        body: JSON.stringify({ 
+          title: editTitle, 
+          description: editDesc, 
+          benefits: editBenefits.filter(b => b.trim() !== ''),
+          is_paid: editingCourse.is_paid,
+          price: editingCourse.price
+        }),
       });
       if (res.ok) {
         setEditingCourse(null);
@@ -68,6 +94,23 @@ const InstructorDashboard = () => {
     } catch (err) {
       alert('Failed to update course');
     }
+  };
+
+  const handleDeleteCourse = async (courseId) => {
+    if (!window.confirm('Are you sure you want to delete this course? This action cannot be undone.')) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/instructor/courses/${courseId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      if (res.ok) {
+        fetchCourses();
+      } else {
+        alert(data.message || 'Failed to delete course');
+      }
+    } catch (err) { alert('Error occurred'); }
   };
 
   const myCourses = courses.filter(c => c.instructor_id === user.id);
@@ -82,7 +125,34 @@ const InstructorDashboard = () => {
   }
 
   return (
-    <div className="dashboard-container instructor-container">
+    <div className="dashboard-container instructor-container instructor-dashboard-view">
+      <style>{`
+        .instructor-dashboard-view {
+          padding: 100px 2rem 2rem;
+        }
+        .stats-main-grid {
+          display: grid; 
+          grid-template-columns: 3fr 1fr; 
+          gap: 2rem; 
+          margin-bottom: 3rem;
+        }
+        @media (max-width: 1024px) {
+          .stats-main-grid {
+            grid-template-columns: 1fr;
+          }
+          .instructor-dashboard-view { padding: 90px 1.5rem 1.5rem; }
+        }
+        @media (max-width: 768px) {
+          .instructor-dashboard-view { padding: 85px 1rem 1rem; }
+          .dashboard-header {
+            flex-direction: column;
+            align-items: stretch !important;
+            text-align: center;
+          }
+          .dashboard-header > div { text-align: left; }
+          .btn-primary { justify-content: center; }
+        }
+      `}</style>
       <motion.div 
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -99,21 +169,53 @@ const InstructorDashboard = () => {
       </motion.div>
 
       {/* Quick Stats */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '3rem' }}>
-        <div className="stat-card glass-panel" style={{ padding: '1.5rem' }}>
-          <div style={{ color: 'var(--primary)', marginBottom: '0.5rem' }}><Users size={24} /></div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800' }}>{myCourses.reduce((acc, c) => acc + (c.total_students || 0), 0)}</div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>My Total Students</div>
+      <div className="stats-main-grid">
+        <div>
+           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <div className="stat-card glass-panel" style={{ padding: '1.5rem' }}>
+              <div style={{ color: 'var(--primary)', marginBottom: '0.5rem' }}><Users size={24} /></div>
+              <div style={{ fontSize: '1.5rem', fontWeight: '800' }}>{myCourses.reduce((acc, c) => acc + (c.total_students || 0), 0)}</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>My Total Students</div>
+            </div>
+            <div className="stat-card glass-panel" style={{ padding: '1.5rem' }}>
+              <div style={{ color: 'var(--secondary)', marginBottom: '0.5rem' }}><BookOpen size={24} /></div>
+              <div style={{ fontSize: '1.5rem', fontWeight: '800' }}>{myCourses.length}</div>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>My Active Courses</div>
+            </div>
+          </div>
+
+          {/* Activity Graph */}
+          {activityData.length > 0 && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel" style={{ padding: '2rem' }}>
+               <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                 <TrendingUp size={20} className="text-primary" /> Student Engagement Trends
+               </h3>
+               <div style={{ height: '240px', width: '100%' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={activityData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                      <defs>
+                        <linearGradient id="colorEngage" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="var(--secondary)" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="var(--secondary)" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                      <XAxis dataKey="date" label={{ value: 'Date', position: 'insideBottom', offset: -10, fontSize: 10 }} tick={{ fontSize: 10 }} />
+                      <YAxis label={{ value: 'Engagements', angle: -90, position: 'insideLeft', fontSize: 10 }} tick={{ fontSize: 10 }} />
+                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                      <Area type="monotone" dataKey="count" stroke="var(--secondary)" strokeWidth={3} fillOpacity={1} fill="url(#colorEngage)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+               </div>
+            </motion.div>
+          )}
         </div>
-        <div className="stat-card glass-panel" style={{ padding: '1.5rem' }}>
-          <div style={{ color: 'var(--secondary)', marginBottom: '0.5rem' }}><BookOpen size={24} /></div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800' }}>{myCourses.length}</div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>My Active Courses</div>
-        </div>
-        <div className="stat-card glass-panel" style={{ padding: '1.5rem' }}>
-          <div style={{ color: 'var(--accent)', marginBottom: '0.5rem' }}><Globe size={24} /></div>
-          <div style={{ fontSize: '1.5rem', fontWeight: '800' }}>{courses.length}</div>
-          <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>Global Library Count</div>
+        
+        <div className="stat-card glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
+          <div style={{ color: 'var(--accent)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}><Globe size={32} /></div>
+          <div style={{ fontSize: '2rem', fontWeight: '800' }}>{courses.length}</div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Global Library Count</div>
+          <div style={{ marginTop: '1rem', fontSize: '0.75rem', background: 'rgba(245,158,11,0.1)', color: 'var(--accent)', padding: '0.4rem', borderRadius: '4px', fontWeight: '700' }}>COMMUNITY DRIVEN</div>
         </div>
       </div>
 
@@ -143,26 +245,46 @@ const InstructorDashboard = () => {
                   <div className="course-icon-wrapper" style={{ background: 'var(--primary-light)', color: 'white', padding: '0.75rem', borderRadius: 'var(--radius-lg)' }}>
                     <BookOpen size={20} />
                   </div>
-                  <button onClick={() => {
-                    setEditingCourse(course);
-                    setEditTitle(course.title);
-                    setEditDesc(course.description);
-                  }} className="icon-btn" style={{ padding: '0.5rem', borderRadius: '50%', background: 'var(--bg-subtle)' }}>
-                    <Edit size={16} />
+                    <button onClick={() => {
+                      setEditingCourse(course);
+                      setEditTitle(course.title);
+                      setEditDesc(course.description);
+                      try {
+                        const b = JSON.parse(course.benefits || '[]');
+                        setEditBenefits(b.length > 0 ? b : ['']);
+                      } catch { setEditBenefits(['']); }
+                    }} className="icon-btn" style={{ padding: '0.5rem', borderRadius: '50%', background: 'var(--bg-subtle)' }}>
+                      <Edit size={16} />
+                    </button>
+                  </div>
+                  <button 
+                    onClick={(e) => { e.preventDefault(); handleDeleteCourse(course.id); }}
+                    className="icon-btn" 
+                    style={{ position: 'absolute', top: '1.5rem', right: '4rem', padding: '0.5rem', borderRadius: '50%', background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}
+                    title="Delete Course"
+                  >
+                    <Trash2 size={16} />
                   </button>
-                </div>
                 <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{course.title}</h3>
                 <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', minHeight: '3em' }}>{course.description || "No description provided."}</p>
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                  <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Users size={14} className="text-primary" /> {course.total_students || 0} Students
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                  <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.6rem', borderRadius: '6px' }}>
+                    <Users size={14} className="text-primary" /> {course.total_students || 0}
                   </div>
-                  <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <FileText size={14} className="text-secondary" /> {course.total_lessons || 0} Lessons
+                  <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.6rem', borderRadius: '6px' }}>
+                    <FileText size={14} className="text-secondary" /> {course.total_lessons || 0}
                   </div>
+                  <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.6rem', borderRadius: '6px', color: course.is_paid ? 'var(--primary)' : '#10b981', fontWeight: '800' }}>
+                    {course.is_paid ? 'PAID' : 'FREE'}
+                  </div>
+                  {course.average_rating > 0 && (
+                    <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.6rem', borderRadius: '6px', color: '#f59e0b', fontWeight: '800' }}>
+                      ⭐ {Number(course.average_rating).toFixed(1)}
+                    </div>
+                  )}
                 </div>
                 <Link to={`/instructor/courses/${course.id}`} className="btn-primary" style={{ width: '100%', textDecoration: 'none', display: 'flex', justifyContent: 'center', gap: '0.5rem' }}>
-                  Manage Content <ArrowRight size={18} />
+                  View Details <ArrowRight size={18} />
                 </Link>
               </div>
             </motion.div>
@@ -193,9 +315,21 @@ const InstructorDashboard = () => {
                 <Globe size={16} className="text-muted" />
               </div>
               <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{course.title}</h3>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>{course.description || "No description provided."}</p>
-              <Link to={`/instructor/courses/${course.id}`} className="nav-btn-outline" style={{ width: '100%', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}>
-                View Curriculum <ExternalLink size={18} />
+              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{course.description || "No description provided."}</p>
+              
+              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                <div style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: course.is_paid ? 'var(--primary)' : '#10b981', fontWeight: '800' }}>
+                  {course.is_paid ? 'PAID' : 'FREE'}
+                </div>
+                {course.average_rating > 0 && (
+                  <div style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: '#f59e0b', fontWeight: '800' }}>
+                    ⭐ {Number(course.average_rating).toFixed(1)}
+                  </div>
+                )}
+              </div>
+
+              <Link to={`/student/courses/${course.id}/preview`} className="nav-btn-outline" style={{ width: '100%', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+                View Details <ExternalLink size={18} />
               </Link>
             </div>
           </motion.div>
@@ -226,6 +360,20 @@ const InstructorDashboard = () => {
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Description</label>
                   <textarea className="input-field" value={editDesc} onChange={e => setEditDesc(e.target.value)} rows="4" required style={{ resize: 'vertical' }} />
+                </div>
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Benefits</label>
+                  {editBenefits.map((b, i) => (
+                    <div key={i} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                        <input className="input-field" value={b} onChange={e => {
+                            const nb = [...editBenefits];
+                            nb[i] = e.target.value;
+                            setEditBenefits(nb);
+                        }} />
+                        {editBenefits.length > 1 && <button type="button" onClick={() => setEditBenefits(editBenefits.filter((_, idx) => idx !== i))} className="close-btn" style={{ padding: '0.5rem' }}>✕</button>}
+                    </div>
+                  ))}
+                  <button type="button" onClick={() => setEditBenefits([...editBenefits, ''])} className="nav-btn-outline" style={{ fontSize: '0.8rem', padding: '0.3rem 0.8rem' }}>+ Add Benefit</button>
                 </div>
                 <button type="submit" className="btn-primary" style={{ width: '100%', padding: '1rem' }}>Save Changes</button>
               </form>

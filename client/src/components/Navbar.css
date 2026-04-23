@@ -29,6 +29,12 @@
     padding: 0 2rem;
   }
   
+  @media (max-width: 768px) {
+    .navbar-container {
+      padding: 0 1rem;
+    }
+  }
+  
   .navbar-logo {
     display: flex;
     align-items: center;
@@ -166,4 +172,16 @@
     text-transform: uppercase;
     letter-spacing: 0.05em;
     font-weight: 700;
+  }
+
+  @media (max-width: 768px) {
+    .user-details {
+      display: none;
+    }
+    .user-profile {
+      padding: 0.25rem;
+    }
+    .navbar-logo span {
+      display: none;
+    }
   }

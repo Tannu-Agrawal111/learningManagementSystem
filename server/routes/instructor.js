@@ -5,6 +5,28 @@ const { authMiddleware, instructorMiddleware } = require('../middleware/auth');
 
 // All routes in this file require authentication and instructor role
 router.use(authMiddleware);
+
+// Public route - MUST BE ABOVE instructorMiddleware so students can access it
+// @route GET /api/instructor/public/:instructorId
+router.get('/public/:instructorId', (req, res) => {
+    const { instructorId } = req.params;
+    db.get('SELECT id, name, bio, headline, experience, avatar FROM users WHERE id = ? AND role = "instructor"', [instructorId], (err, instructor) => {
+        if (err || !instructor) return res.status(404).json({ message: 'Instructor not found' });
+        
+        const statsQuery = `
+            SELECT 
+                (SELECT COUNT(*) FROM courses WHERE instructor_id = ?) as total_courses,
+                (SELECT COUNT(*) FROM enrollments e JOIN courses c ON e.course_id = c.id WHERE c.instructor_id = ?) as total_students
+        `;
+        
+        db.get(statsQuery, [instructorId, instructorId], (err, stats) => {
+            db.all('SELECT id, title, description, price, is_paid, average_rating, total_ratings FROM courses WHERE instructor_id = ?', [instructorId], (err, courses) => {
+                res.json({ instructor: { ...instructor, ...stats }, courses });
+            });
+        });
+    });
+});
+
 router.use(instructorMiddleware);
 
 // @route GET /api/instructor/courses
@@ -29,36 +51,64 @@ router.get('/courses', (req, res) => {
 // @route POST /api/instructor/courses
 // @desc Create a new course
 router.post('/courses', (req, res) => {
-  const { title, description } = req.body;
+  const { title, description, is_paid, price, benefits } = req.body;
   const instructorId = req.user.id;
 
   if (!title) return res.status(400).json({ message: 'Course title is required' });
 
-  db.run(
-    'INSERT INTO courses (instructor_id, title, description) VALUES (?, ?, ?)',
-    [instructorId, title, description],
-    function (err) {
-      if (err) return res.status(500).json({ message: 'Failed to create course' });
-      res.json({ id: this.lastID, instructor_id: instructorId, title, description });
+  const isPaid = is_paid ? 1 : 0;
+  const coursePrice = isPaid ? (parseFloat(price) || 0) : 0;
+  const courseBenefits = Array.isArray(benefits) ? JSON.stringify(benefits) : '[]';
+
+  // Task 2: Validate instructor payment details for paid courses
+  db.get('SELECT upi_id, bank_account, ifsc_code FROM users WHERE id = ?', [instructorId], (err, user) => {
+    const hasUpi = !!user?.upi_id;
+    const hasBank = !!(user?.bank_account && user?.ifsc_code);
+    
+    if (isPaid && !hasUpi && !hasBank) {
+      return res.status(400).json({ message: 'Add payment details before creating a paid course' });
     }
-  );
+
+    db.run(
+      'INSERT INTO courses (instructor_id, title, description, is_paid, price, benefits) VALUES (?, ?, ?, ?, ?, ?)',
+      [instructorId, title, description, isPaid, coursePrice, courseBenefits],
+      function (err) {
+        if (err) return res.status(500).json({ message: 'Failed to create course' });
+        res.json({ id: this.lastID, instructor_id: instructorId, title, description, is_paid: isPaid, price: coursePrice, benefits: courseBenefits });
+      }
+    );
+  });
 });
 
-// @route POST /api/instructor/courses/:courseId
+// @route POST /api/instructor/courses/:courseId/edit
 // @desc Update a course (Edit)
 router.post('/courses/:courseId/edit', (req, res) => {
   const { courseId } = req.params;
-  const { title, description } = req.body;
+  const { title, description, is_paid, price, benefits } = req.body;
   const instructorId = req.user.id;
 
-  db.run(
-    'UPDATE courses SET title = ?, description = ? WHERE id = ? AND instructor_id = ?',
-    [title, description, courseId, instructorId],
-    function(err) {
-      if (err) return res.status(500).json({ message: 'Failed to update course' });
-      res.json({ message: 'Course updated successfully' });
+  const isPaid = is_paid ? 1 : 0;
+  const coursePrice = isPaid ? (parseFloat(price) || 0) : 0;
+  const courseBenefits = Array.isArray(benefits) ? JSON.stringify(benefits) : '[]';
+
+  // Task 2: Validate instructor payment details for paid courses
+  db.get('SELECT upi_id, bank_account, ifsc_code FROM users WHERE id = ?', [instructorId], (err, user) => {
+    const hasUpi = !!user?.upi_id;
+    const hasBank = !!(user?.bank_account && user?.ifsc_code);
+    
+    if (isPaid && !hasUpi && !hasBank) {
+      return res.status(400).json({ message: 'Add payment details before publishing a paid course' });
     }
-  );
+
+    db.run(
+      'UPDATE courses SET title = ?, description = ?, is_paid = ?, price = ?, benefits = ? WHERE id = ? AND instructor_id = ?',
+      [title, description, isPaid, coursePrice, courseBenefits, courseId, instructorId],
+      function(err) {
+        if (err) return res.status(500).json({ message: 'Failed to update course' });
+        res.json({ message: 'Course updated successfully' });
+      }
+    );
+  });
 });
 
 // @route GET /api/instructor/courses/:courseId/lessons
@@ -75,14 +125,14 @@ router.get('/courses/:courseId/lessons', (req, res) => {
 // @desc Add a new lesson to a course
 router.post('/courses/:courseId/lessons', (req, res) => {
   const { courseId } = req.params;
-  const { title, content, type, url, order_index, resources } = req.body;
+  const { title, content, type, url, order_index, resources, is_preview } = req.body;
 
   db.run(
-    'INSERT INTO lessons (course_id, title, content, type, url, order_index, resources) VALUES (?, ?, ?, ?, ?, ?, ?)',
-    [courseId, title, content, type || 'text', url, order_index, resources || '[]'],
+    'INSERT INTO lessons (course_id, title, content, type, url, order_index, resources, is_preview) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+    [courseId, title, content, type || 'text', url, order_index, resources || '[]', is_preview ? 1 : 0],
     function (err) {
       if (err) return res.status(500).json({ message: 'Failed to create lesson' });
-      res.json({ id: this.lastID, course_id: courseId, title, content, type: type || 'text', url, order_index, resources: resources || '[]' });
+      res.json({ id: this.lastID, course_id: courseId, title, content, type: type || 'text', url, order_index, resources: resources || '[]', is_preview: is_preview ? 1 : 0 });
     }
   );
 });
@@ -91,14 +141,29 @@ router.post('/courses/:courseId/lessons', (req, res) => {
 // @desc Update a lesson (Edit)
 router.put('/lessons/:lessonId', (req, res) => {
   const { lessonId } = req.params;
-  const { title, content, type, url, resources } = req.body;
+  const { title, content, type, url, resources, is_preview } = req.body;
   
   db.run(
-    'UPDATE lessons SET title = ?, content = ?, type = ?, url = ?, resources = ? WHERE id = ?',
-    [title, content, type, url, resources || '[]', lessonId],
+    'UPDATE lessons SET title = ?, content = ?, type = ?, url = ?, resources = ?, is_preview = ? WHERE id = ?',
+    [title, content, type, url, resources || '[]', is_preview ? 1 : 0, lessonId],
     function(err) {
       if (err) return res.status(500).json({ message: 'Failed to update lesson' });
       res.json({ message: 'Lesson updated successfully' });
+    }
+  );
+});
+
+// @route PATCH /api/instructor/lessons/:lessonId/preview
+// @desc Toggle preview flag on a lesson
+router.patch('/lessons/:lessonId/preview', (req, res) => {
+  const { lessonId } = req.params;
+  const { is_preview } = req.body;
+  db.run(
+    'UPDATE lessons SET is_preview = ? WHERE id = ?',
+    [is_preview ? 1 : 0, lessonId],
+    function(err) {
+      if (err) return res.status(500).json({ message: 'Failed to update preview' });
+      res.json({ message: 'Preview updated' });
     }
   );
 });
@@ -207,12 +272,57 @@ router.post('/doubts/:doubtId/answer', (req, res) => {
   });
 });
 
+// @route DELETE /api/instructor/courses/:courseId
+// @desc TASK 6: Delete a course with enrollment rules
+router.delete('/courses/:courseId', (req, res) => {
+    const { courseId } = req.params;
+    const instructorId = req.user.id;
+
+    db.get('SELECT is_paid, (SELECT COUNT(*) FROM enrollments WHERE course_id = ?) as student_count FROM courses WHERE id = ? AND instructor_id = ?', [courseId, courseId, instructorId], (err, row) => {
+        if (err || !row) return res.status(404).json({ message: 'Course not found' });
+
+        if (row.is_paid === 1 && row.student_count > 0) {
+            return res.status(400).json({ message: 'Cannot delete a paid course with active enrollments.' });
+        }
+
+        // Proceed with deletion
+        db.serialize(() => {
+            db.run('DELETE FROM lessons WHERE course_id = ?', [courseId]);
+            db.run('DELETE FROM enrollments WHERE course_id = ?', [courseId]);
+            db.run('DELETE FROM courses WHERE id = ?', [courseId], function(err) {
+                if (err) return res.status(500).json({ message: 'Delete failed' });
+                res.json({ message: 'Course deleted successfully' });
+            });
+        });
+    });
+});
+
+// @route GET /api/instructor/activity
+// @desc  Get student engagement trends
+router.get('/activity', authMiddleware, (req, res) => {
+    const instructorId = req.user.id;
+    // Simple aggregation of enrollments by date as a proxy for activity
+    const query = `
+      SELECT date(enrolled_at) as date, COUNT(*) as count 
+      FROM enrollments e
+      JOIN courses c ON e.course_id = c.id
+      WHERE c.instructor_id = ?
+      GROUP BY date(enrolled_at)
+      ORDER BY date ASC
+      LIMIT 14
+    `;
+    db.all(query, [instructorId], (err, rows) => {
+      if (err) return res.status(500).json({ message: 'DB Error' });
+      res.json(rows);
+    });
+});
+
+
 // @route POST /api/instructor/ai/generate-quiz
 router.post('/ai/generate-quiz', (req, res) => {
   const { content, title } = req.body;
   if (!content) return res.status(400).json({ message: 'Content is required' });
 
-  // Better AI simulation logic
   const keywords = content.match(/\b(\w{6,})\b/g) || ["concept", "method", "process", "outcome", "framework"];
   const uniqueKeywords = [...new Set(keywords)].slice(0, 15);
   
@@ -260,9 +370,15 @@ router.post('/ai/generate-quiz', (req, res) => {
   ];
 
   const mockQuizzes = Array.from({ length: 10 }).map((_, i) => {
-    const kw = uniqueKeywords[i % uniqueKeywords.length] || "key concept";
+    const kw = uniqueKeywords[i % uniqueKeywords.length] || "core concept";
     const typeFn = questionTypes[i % questionTypes.length];
-    return typeFn(kw);
+    const q = typeFn(kw);
+    // TASK 12: Ensure structured validation
+    return {
+        ...q,
+        options: q.options,
+        correct_answer: q.correct_answer
+    };
   });
 
   setTimeout(() => res.json(mockQuizzes), 1500);

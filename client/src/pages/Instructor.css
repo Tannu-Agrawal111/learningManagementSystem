@@ -14,7 +14,7 @@
   }
   
   .dashboard-header h1 {
-    font-size: 2.5rem;
+    font-size: clamp(1.5rem, 4vw, 2.5rem);
     background: linear-gradient(135deg, var(--text-primary), var(--primary-dark));
     -webkit-background-clip: text;
     background-clip: text;
@@ -24,8 +24,8 @@
   
   .courses-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 2rem;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
     margin-bottom: 3rem;
   }
   
@@ -271,4 +271,43 @@
     border-color: var(--primary-light);
     transform: translateY(-4px);
     box-shadow: var(--shadow-xl);
+  }
+  @media (max-width: 1024px) {
+    .courses-grid {
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+    .dashboard-header h1 { font-size: 2rem; }
+  }
+
+  @media (max-width: 768px) {
+    .dashboard-header {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 1rem;
+      text-align: center;
+    }
+    .dashboard-header > div {
+        text-align: left;
+    }
+    .instructor-container { padding: 0.75rem; }
+    .form-card { padding: 1.5rem; }
+    .lesson-item { 
+        flex-direction: column; 
+        align-items: stretch; 
+        gap: 1rem; 
+        padding: 1rem;
+    }
+    .lesson-info {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+    .action-btn { width: 100%; justify-content: center; }
+  }
+
+  @media (max-width: 480px) {
+    .dashboard-header h1 { font-size: 1.5rem; }
+    .stat-card { padding: 1rem !important; }
+    .course-card { padding: 1.25rem; }
   }

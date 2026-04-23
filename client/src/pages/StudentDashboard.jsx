@@ -16,7 +16,8 @@ import {
   Sparkles,
   Users,
   LogOut,
-  Trash2
+  Trash2,
+  CreditCard
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import './Student.css';
@@ -25,8 +26,9 @@ const StudentDashboard = () => {
   const { user } = useContext(AuthContext);
   const [enrollments, setEnrollments] = useState([]);
   const [allCourses, setAllCourses] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]           = useState(true);
   const [unenrollingId, setUnenrollingId] = useState(null);
+  const [activityData, setActivityData]   = useState([]);
 
   const fetchData = async () => {
     try {
@@ -46,6 +48,12 @@ const StudentDashboard = () => {
         setEnrollments(enrollData);
         setAllCourses(catalogData);
       }
+
+      // Fetch activity data
+      const actRes = await fetch('http://localhost:5000/api/student/activity', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (actRes.ok) setActivityData(await actRes.json());
     } catch (err) {
       console.error('Failed to fetch data', err);
     } finally {
@@ -91,7 +99,7 @@ const StudentDashboard = () => {
   };
 
   const enrolledIds = enrollments.map(e => e.id);
-  const recommendedCourses = allCourses.filter(c => !enrolledIds.includes(c.id)).slice(0, 3);
+  const recommendedCourses = allCourses.filter(c => !enrolledIds.includes(c.id)).slice(0, 6);
 
   const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
 
@@ -197,6 +205,37 @@ const StudentDashboard = () => {
 
       {/* Discovery Section */}
       <div style={{ marginBottom: '3rem' }}>
+        <style>{`
+          .horizontal-scroll-grid {
+            display: flex !important;
+            overflow-x: auto;
+            gap: 2rem;
+            padding: 0.5rem 0.5rem 1.5rem;
+            margin: -0.5rem;
+            scroll-snap-type: x mandatory;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary-light) transparent;
+          }
+          .horizontal-scroll-grid::-webkit-scrollbar {
+            height: 6px;
+          }
+          .horizontal-scroll-grid::-webkit-scrollbar-track {
+            background: transparent;
+          }
+          .horizontal-scroll-grid::-webkit-scrollbar-thumb {
+            background-color: var(--primary-light);
+            border-radius: 20px;
+          }
+          .horizontal-scroll-grid > div {
+            flex: 0 0 320px;
+            scroll-snap-align: start;
+          }
+          @media (max-width: 480px) {
+            .horizontal-scroll-grid > div {
+              flex: 0 0 280px;
+            }
+          }
+        `}</style>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Sparkles className="text-accent" size={24} /> {enrollments.length === 0 ? "Recommended Courses" : "Expand Your Skills"}
@@ -209,7 +248,7 @@ const StudentDashboard = () => {
             <p style={{ color: 'var(--text-secondary)' }}>You've enrolled in everything we have! Amazing job. 🏆</p>
           </div>
         ) : (
-          <div className="catalog-grid">
+          <div className="catalog-grid horizontal-scroll-grid">
             {recommendedCourses.map((course, index) => (
               <motion.div 
                 key={course.id} 
@@ -220,8 +259,18 @@ const StudentDashboard = () => {
                 whileHover={{ y: -8, boxShadow: 'var(--shadow-xl)' }}
               >
                 <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-lg)', marginBottom: '1.25rem' }}>
-                  <div style={{ height: '160px', background: 'linear-gradient(135deg, #F59E0B, #EF4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                      <GraduationCap size={64} opacity={0.5} />
+                  {course.is_paid === 1 && (
+                    <span style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', zIndex: 10, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>
+                      ₹{Number(course.price).toLocaleString('en-IN')}
+                    </span>
+                  )}
+                  {!course.is_paid && (
+                    <span style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', zIndex: 10, background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>
+                      FREE
+                    </span>
+                  )}
+                  <div style={{ height: '160px', background: course.is_paid ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'linear-gradient(135deg, #F59E0B, #EF4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                      {course.is_paid ? <CreditCard size={64} opacity={0.5} /> : <GraduationCap size={64} opacity={0.5} />}
                   </div>
                 </div>
                 
@@ -240,7 +289,7 @@ const StudentDashboard = () => {
                   {course.description || "No description provided."}
                 </p>
                 
-                <Link to="/student/catalog" style={{textDecoration: 'none', marginTop: 'auto'}}>
+                <Link to={`/student/courses/${course.id}/preview`} style={{textDecoration: 'none', marginTop: 'auto'}}>
                   <button className="enroll-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', background: 'var(--bg-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', boxShadow: 'none' }}>
                     View Details
                   </button>
@@ -251,39 +300,6 @@ const StudentDashboard = () => {
         )}
       </div>
 
-      {enrollments.length > 0 && (
-        <motion.div 
-            initial={{ opacity: 0, scale: 0.98 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            className="glass-panel" 
-            style={{ padding: '2.5rem', marginTop: '2rem', background: 'linear-gradient(to bottom right, var(--bg-surface), var(--bg-subtle))' }}
-        >
-            <h3 style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <TrendingUp size={24} className="text-primary" /> Learning Activity Curve
-            </h3>
-            <div style={{ height: 300, width: '100%' }}>
-                <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={enrollments}>
-                        <defs>
-                          <linearGradient id="colorProg" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="var(--primary)" stopOpacity={0.3}/>
-                            <stop offset="95%" stopColor="var(--primary)" stopOpacity={0}/>
-                          </linearGradient>
-                        </defs>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                        <XAxis dataKey="title" hide />
-                        <YAxis stroke="var(--text-secondary)" fontSize={12} tickFormatter={(val) => `${val}%`} />
-                        <Tooltip 
-                            contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px rgba(0,0,0,0.1)' }}
-                            formatter={(value) => [`${value}% Complete`]}
-                        />
-                        <Area type="monotone" dataKey="progress_percentage" stroke="var(--primary)" strokeWidth={3} fillOpacity={1} fill="url(#colorProg)" />
-                    </AreaChart>
-                </ResponsiveContainer>
-            </div>
-        </motion.div>
-      )}
     </div>
   );
 };

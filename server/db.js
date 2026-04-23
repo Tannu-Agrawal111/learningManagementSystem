@@ -28,18 +28,25 @@ function initDb() {
       instructor_id INTEGER NOT NULL,
       title TEXT NOT NULL,
       description TEXT,
+      is_paid INTEGER DEFAULT 0,
+      price REAL DEFAULT 0,
+      average_rating REAL DEFAULT 0,
+      total_ratings INTEGER DEFAULT 0,
+      benefits TEXT DEFAULT '[]',
       FOREIGN KEY (instructor_id) REFERENCES users (id)
     )`);
 
-    // Lessons table - updated to support multiple content types
+    // Lessons table - updated to support multiple content types + preview flag
     db.run(`CREATE TABLE IF NOT EXISTS lessons (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       course_id INTEGER NOT NULL,
       title TEXT NOT NULL,
-      content TEXT, -- Text content or description
+      content TEXT,
       type TEXT CHECK( type IN ('text', 'video', 'pdf', 'test') ) NOT NULL DEFAULT 'text',
-      url TEXT, -- URL for video/pdf
+      url TEXT,
       order_index INTEGER NOT NULL,
+      resources TEXT DEFAULT '[]',
+      is_preview INTEGER DEFAULT 0,
       FOREIGN KEY (course_id) REFERENCES courses (id)
     )`);
 
@@ -83,7 +90,7 @@ function initDb() {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       lesson_id INTEGER NOT NULL,
       question TEXT NOT NULL,
-      options TEXT NOT NULL, -- JSON string of options
+      options TEXT NOT NULL,
       correct_answer TEXT NOT NULL,
       FOREIGN KEY (lesson_id) REFERENCES lessons (id)
     )`);
@@ -102,7 +109,53 @@ function initDb() {
       FOREIGN KEY (lesson_id) REFERENCES lessons (id)
     )`);
 
+    // Payments table
+    db.run(`CREATE TABLE IF NOT EXISTS payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      course_id INTEGER NOT NULL,
+      razorpay_order_id TEXT,
+      razorpay_payment_id TEXT,
+      amount REAL NOT NULL,
+      status TEXT CHECK( status IN ('pending', 'paid', 'failed') ) DEFAULT 'pending',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (student_id) REFERENCES users (id),
+      FOREIGN KEY (course_id) REFERENCES courses (id)
+    )`);
+
+    // Run migrations for existing databases
+    runMigrations();
+
     console.log('Database tables initialized.');
+  });
+}
+
+function runMigrations() {
+  db.serialize(() => {
+    // Add is_paid to courses if missing
+    db.run(`ALTER TABLE courses ADD COLUMN is_paid INTEGER DEFAULT 0`, (err) => {});
+    db.run(`ALTER TABLE courses ADD COLUMN price REAL DEFAULT 0`, (err) => {});
+    db.run(`ALTER TABLE courses ADD COLUMN average_rating REAL DEFAULT 0`, (err) => {});
+    db.run(`ALTER TABLE courses ADD COLUMN total_ratings INTEGER DEFAULT 0`, (err) => {});
+    db.run(`ALTER TABLE courses ADD COLUMN benefits TEXT DEFAULT '[]'`, (err) => {});
+    
+    // Add is_preview to lessons if missing
+    db.run(`ALTER TABLE lessons ADD COLUMN is_preview INTEGER DEFAULT 0`, (err) => {});
+    // Add resources to lessons if missing
+    db.run(`ALTER TABLE lessons ADD COLUMN resources TEXT DEFAULT '[]'`, (err) => {});
+
+    // Add profile columns to users if missing
+    db.run(`ALTER TABLE users ADD COLUMN bio TEXT`, (err) => {});
+    db.run(`ALTER TABLE users ADD COLUMN headline TEXT`, (err) => {});
+    db.run(`ALTER TABLE users ADD COLUMN experience TEXT`, (err) => {});
+    db.run(`ALTER TABLE users ADD COLUMN avatar TEXT`, (err) => {});
+    db.run(`ALTER TABLE users ADD COLUMN location TEXT`, (err) => {});
+    db.run(`ALTER TABLE users ADD COLUMN website TEXT`, (err) => {});
+    db.run(`ALTER TABLE users ADD COLUMN upi_id TEXT`, (err) => {});
+    db.run(`ALTER TABLE users ADD COLUMN qr_code TEXT`, (err) => {});
+    db.run(`ALTER TABLE users ADD COLUMN bank_account TEXT`, (err) => {});
+    db.run(`ALTER TABLE users ADD COLUMN ifsc_code TEXT`, (err) => {});
+    db.run(`ALTER TABLE users ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`, (err) => {});
   });
 }
 

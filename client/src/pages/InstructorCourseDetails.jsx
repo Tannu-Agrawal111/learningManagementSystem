@@ -30,6 +30,7 @@ import {
   FileCode,
   Image,
   ExternalLink,
+  Zap
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import './Instructor.css';
@@ -50,6 +51,7 @@ const InstructorCourseDetails = () => {
   const [content, setContent] = useState('');
   const [lessonType, setLessonType] = useState('text');
   const [lessonUrl, setLessonUrl] = useState('');
+  const [isPreview, setIsPreview] = useState(false);
   const [error, setError] = useState('');
 
   // Quiz state
@@ -175,7 +177,8 @@ const InstructorCourseDetails = () => {
           type: lessonType, 
           url: lessonUrl.trim(), 
           order_index,
-          resources: JSON.stringify(lessonResources)
+          resources: JSON.stringify(lessonResources),
+          is_preview: isPreview ? 1 : 0
         }),
       });
 
@@ -188,6 +191,7 @@ const InstructorCourseDetails = () => {
         setLessonType('text');
         setLessonUrl('');
         setLessonResources([]); // Reset resources after save
+        setIsPreview(false);
       } else {
         const data = await res.json();
         setError(data.message || 'Failed to save lesson');
@@ -216,6 +220,7 @@ const InstructorCourseDetails = () => {
     setLessonType('text');
     setLessonUrl('');
     setLessonResources([]);
+    setIsPreview(false);
     setShowForm(true);
     setEditorTab('edit');
   };
@@ -237,9 +242,25 @@ const InstructorCourseDetails = () => {
         console.error("Error parsing resources", e);
     }
     setLessonResources(Array.isArray(parsedResources) ? parsedResources : []);
+    setIsPreview(lesson.is_preview === 1);
     
     setShowForm(true);
     setEditorTab('edit');
+  };
+
+  const handleTogglePreview = async (lessonId, currentPreview) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/instructor/lessons/${lessonId}/preview`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ is_preview: currentPreview === 1 ? 0 : 1 }),
+      });
+      if (res.ok) fetchLessons();
+    } catch (err) { alert('Failed to update preview status'); }
   };
 
   const insertFormatting = (tag) => {
@@ -388,10 +409,46 @@ const InstructorCourseDetails = () => {
   }
 
   return (
-    <div className="dashboard-container instructor-container">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+    <div className="dashboard-container instructor-container instructor-course-details-page">
+      <style>{`
+        .instructor-course-details-page {
+          padding: 100px 2rem 2rem;
+        }
+        @media (max-width: 1024px) {
+          .instructor-course-details-page { padding: 90px 1.5rem 1.5rem; }
+          .dashboard-tabs {
+            overflow-x: auto;
+            white-space: nowrap;
+            padding-bottom: 0.5rem;
+          }
+          .tab-item {
+            flex-shrink: 0;
+            padding: 0.75rem 1.25rem !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .instructor-course-details-page { padding: 85px 1rem 1rem; }
+          .dashboard-header h1 {
+            font-size: 1.8rem !important;
+            flex-direction: column;
+            align-items: flex-start !important;
+          }
+          .lesson-item {
+            padding: 1rem !important;
+          }
+          .lesson-info {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 0.5rem;
+          }
+          .form-card > form > div {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <Link to="/instructor/dashboard" className="back-link" style={{ marginBottom: 0 }}>
-            <ArrowLeft size={18} /> Back to Hub
+            <ArrowLeft size={18} /> Back to Dashboard
         </Link>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button 
@@ -480,6 +537,23 @@ const InstructorCourseDetails = () => {
                         </select>
                     </div>
                   </div>
+
+                  {course?.is_paid === 1 && (
+                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
+                        <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: 'var(--bg-subtle)', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                            <input 
+                                type="checkbox" 
+                                checked={isPreview} 
+                                onChange={(e) => setIsPreview(e.target.checked)} 
+                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                            />
+                            <div>
+                                <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>Enable Free Preview</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Students can view this lesson for free before purchasing the course.</div>
+                            </div>
+                        </label>
+                    </div>
+                  )}
                   {(lessonType !== 'text' && lessonType !== 'test') && (
                     <div className="form-group">
                         <label>Resource URL</label>
@@ -573,6 +647,9 @@ const InstructorCourseDetails = () => {
                             {getIconForType(lesson.type)}
                             {lesson.title}
                             <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'var(--bg-subtle)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{lesson.type}</span>
+                            {lesson.is_preview === 1 && (
+                                <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#16a34a', padding: '0.15rem 0.5rem', borderRadius: '10px', fontWeight: '800' }}>FREE PREVIEW</span>
+                            )}
                         </div>
                     </div>
                     </div>
@@ -581,6 +658,22 @@ const InstructorCourseDetails = () => {
                         <button onClick={() => openQuizManager(lesson.id)} className="action-btn" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
                             <HelpCircle size={14} /> Quizzes
                         </button>
+                        {course?.is_paid === 1 && (
+                            <button 
+                                onClick={() => handleTogglePreview(lesson.id, lesson.is_preview)} 
+                                className={`action-btn ${lesson.is_preview ? 'active' : ''}`} 
+                                style={{ 
+                                    fontSize: '0.8rem', 
+                                    padding: '0.4rem 0.8rem', 
+                                    background: lesson.is_preview ? '#dcfce7' : 'var(--bg-subtle)',
+                                    color: lesson.is_preview ? '#16a34a' : 'var(--text-muted)',
+                                    border: lesson.is_preview ? '1px solid #16a34a' : '1px solid var(--border-color)'
+                                }}
+                                title={lesson.is_preview ? "Disable Preview" : "Enable Preview"}
+                            >
+                                <Zap size={14} /> {lesson.is_preview ? 'Unlocked' : 'Locked'}
+                            </button>
+                        )}
                         <button onClick={() => handleEditClick(lesson)} className="icon-btn-muted"><Edit size={16} /></button>
                         <button onClick={() => handleDeleteLesson(lesson.id)} className="icon-btn-muted"><Trash2 size={16} color="#EF4444" /></button>
                     </div>
@@ -613,15 +706,20 @@ const InstructorCourseDetails = () => {
                                                 {lesson.content.length > 100 ? lesson.content.substring(0, 100) + '...' : lesson.content}
                                             </div>
                                         )}
-                                        {lesson.resources && JSON.parse(lesson.resources).length > 0 && (
-                                            <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                {JSON.parse(lesson.resources).map(r => (
-                                                    <span key={r.id} style={{ fontSize: '0.7rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)' }}>
-                                                        📎 {r.title}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
+                                        {(() => {
+                                            let res = [];
+                                            try { res = typeof lesson.resources === 'string' ? JSON.parse(lesson.resources) : (lesson.resources || []); } catch(e) { res = []; }
+                                            if (!Array.isArray(res) || res.length === 0) return null;
+                                            return (
+                                                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                                                    {res.map((r, i) => (
+                                                        <span key={r.id || i} style={{ fontSize: '0.7rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                                                            📎 {r.title || 'Resource'}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 )}
                             </div>
@@ -671,8 +769,15 @@ const InstructorCourseDetails = () => {
                     </thead>
                     <tbody>
                         {enrolledStudents.map((s) => (
-                            <tr key={s.id} style={{ borderBottom: '1px solid var(--border-color)' }}>
-                                <td style={{ padding: '1rem', fontWeight: '600' }}>{s.name}</td>
+                            <tr key={s.id} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.2s' }} className="hover-bg">
+                                <td style={{ padding: '1rem' }}>
+                                    <Link to={`/profile/${s.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                                        <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem', fontWeight: '800' }}>
+                                            {s.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()}
+                                        </div>
+                                        <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{s.name}</span>
+                                    </Link>
+                                </td>
                                 <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Mail size={14} /> {s.email}</div></td>
                                 <td style={{ padding: '1rem', color: 'var(--text-secondary)' }}><div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Calendar size={14} /> {new Date(s.enrolled_at).toLocaleDateString()}</div></td>
                             </tr>

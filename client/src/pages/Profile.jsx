@@ -20,7 +20,10 @@ const Profile = () => {
   const fileInputRef = useRef(null);
   const navigate = useNavigate();
 
-  const [form, setForm] = useState({ name: '', bio: '', headline: '', location: '', website: '', avatar: '' });
+  const [form, setForm] = useState({ 
+    name: '', bio: '', headline: '', location: '', website: '', avatar: '',
+    experience: '', upi_id: '', qr_code: '', bank_account: '', ifsc_code: '' 
+  });
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
   useEffect(() => { fetchProfile(); }, []);
@@ -41,7 +44,12 @@ const Profile = () => {
         headline: data.user.headline || '',
         location: data.user.location || '',
         website:  data.user.website  || '',
-        avatar:   data.user.avatar   || ''
+        avatar:   data.user.avatar   || '',
+        experience: data.user.experience || '',
+        upi_id:   data.user.upi_id   || '',
+        qr_code:  data.user.qr_code  || '',
+        bank_account: data.user.bank_account || '',
+        ifsc_code: data.user.ifsc_code || ''
       });
       setAvatarPreview(data.user.avatar || null);
     } catch {
@@ -84,6 +92,7 @@ const Profile = () => {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
+
       showToast('success', 'Profile updated successfully!');
       setEditing(false);
       fetchProfile();
@@ -156,16 +165,45 @@ const Profile = () => {
   const displayAvatar = avatarPreview || form.avatar || null;
 
   return (
-    <div className="dashboard-container" style={{ maxWidth: '1000px', padding: '2.5rem 2rem' }}>
+    <div className="dashboard-container profile-page-container" style={{ maxWidth: '1000px', margin: '0 auto' }}>
+      <style>{`
+        .profile-page-container {
+          padding: 100px 2rem 2rem;
+        }
+        @media (max-width: 768px) {
+          .profile-page-container { padding: 85px 1rem 1rem; }
+          .profile-hero-card { 
+            flex-direction: column; 
+            text-align: center; 
+            padding: 2rem 1.5rem !important;
+            gap: 1.5rem !important;
+          }
+          .profile-hero-card > div:last-child {
+            align-self: center !important;
+            width: 100%;
+          }
+          .profile-main-layout {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
 
       {/* ── Back to Dashboard ── */}
-      <button
-        onClick={() => navigate(isInstructor ? '/instructor/dashboard' : '/dashboard')}
-        className="back-link"
-        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginBottom: '1.5rem', background: 'none', border: 'none', cursor: 'pointer' }}
-      >
-        <ArrowLeft size={18} /> Back to Dashboard
-      </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
+        <button 
+          onClick={() => navigate(user?.role === 'instructor' ? '/instructor/dashboard' : '/dashboard')} 
+          className="back-link" 
+          style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-secondary)', marginBottom: 0 }}
+        >
+          <ArrowLeft size={18} /> Back to Dashboard
+        </button>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ height: '20px', width: '1px', background: 'var(--border-color)' }}></span>
+          <span style={{ fontWeight: '800', fontSize: '1.2rem', letterSpacing: '-0.02em' }}>
+            <span style={{ color: 'var(--primary)' }}>E</span>levate
+          </span>
+        </div>
+      </div>
 
       {/* Toast */}
       <AnimatePresence>
@@ -189,13 +227,19 @@ const Profile = () => {
       {/* ── Hero card ── */}
       <motion.div
         initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        className="glass-panel"
-        style={{ padding: '2.5rem', marginBottom: '2rem', background: 'linear-gradient(135deg,rgba(99,102,241,.05),rgba(16,185,129,.05))' }}
+        className="glass-panel profile-hero-card"
+        style={{ 
+          padding: '2.5rem', 
+          marginBottom: '2rem', 
+          background: 'linear-gradient(135deg,rgba(99,102,241,.05),rgba(16,185,129,.05))',
+          display: 'flex',
+          gap: '2rem',
+          alignItems: 'center',
+          flexWrap: 'wrap'
+        }}
       >
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '2rem', flexWrap: 'wrap' }}>
-
-          {/* Avatar with upload overlay */}
-          <div style={{ position: 'relative', flexShrink: 0 }}>
+        {/* Avatar Section */}
+        <div style={{ position: 'relative', flexShrink: 0, margin: '0 auto' }}>
             <div style={{
               width: '110px', height: '110px', borderRadius: '50%',
               background: isInstructor ? 'linear-gradient(135deg,#6366f1,#4f46e5)' : 'linear-gradient(135deg,#10b981,#059669)',
@@ -209,7 +253,7 @@ const Profile = () => {
                 : initials}
             </div>
 
-            {/* Camera overlay (always visible, opens file picker) */}
+            {/* Camera overlay */}
             <button
               onClick={() => fileInputRef.current?.click()}
               title="Change profile photo"
@@ -230,76 +274,72 @@ const Profile = () => {
               style={{ display: 'none' }}
               onChange={handleAvatarChange}
             />
-          </div>
-
-          {/* Details */}
-          <div style={{ flex: 1, minWidth: '200px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-              <h1 style={{ margin: 0, fontSize: '2rem' }}>{user.name}</h1>
-              <span style={{
-                padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.78rem',
-                fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em',
-                background: isInstructor ? 'rgba(99,102,241,.12)' : 'rgba(16,185,129,.12)',
-                color: isInstructor ? '#6366f1' : '#10b981',
-                border: `1px solid ${isInstructor ? 'rgba(99,102,241,.25)' : 'rgba(16,185,129,.25)'}`
-              }}>
-                {isInstructor ? '🎓 Instructor' : '📚 Student'}
-              </span>
-            </div>
-
-            {user.headline && (
-              <p style={{ margin: '0 0 0.75rem', fontSize: '1.05rem', color: 'var(--text-secondary)', fontWeight: '500' }}>
-                {user.headline}
-              </p>
-            )}
-
-            <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap', fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><Mail size={15} /> {user.email}</span>
-              {user.location && <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}><MapPin size={15} /> {user.location}</span>}
-              {user.website && (
-                <a href={user.website} target="_blank" rel="noopener noreferrer"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--primary)', textDecoration: 'none' }}>
-                  <Globe size={15} /> {user.website.replace(/^https?:\/\//, '')}
-                </a>
-              )}
-              {/* ── Member Since: real date ── */}
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Calendar size={15} /> Member since {joinDate}
-              </span>
-            </div>
-
-            {user.bio && (
-              <p style={{ margin: '1rem 0 0', lineHeight: '1.75', color: 'var(--text-secondary)', maxWidth: '600px' }}>
-                {user.bio}
-              </p>
-            )}
-          </div>
-
-          {/* Edit toggle */}
-          <button
-            onClick={() => setEditing(e => !e)}
-            className={editing ? 'nav-btn-outline' : 'btn-primary'}
-            style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}
-          >
-            {editing ? <><X size={18} /> Cancel</> : <><Edit3 size={18} /> Edit Profile</>}
-          </button>
         </div>
+
+        {/* Details Section */}
+        <div style={{ flex: 1, minWidth: '250px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.5rem', justifyContent: 'inherit' }}>
+            <h1 style={{ margin: 0, fontSize: 'clamp(1.5rem, 4vw, 2.2rem)', wordBreak: 'break-word' }}>{user.name}</h1>
+            <span style={{
+              padding: '0.25rem 1rem', borderRadius: '9999px', fontSize: '0.78rem',
+              fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.06em',
+              background: isInstructor ? 'var(--primary-light)' : 'rgba(16,185,129,0.1)',
+              color: isInstructor ? 'var(--primary)' : '#10b981'
+            }}>
+              {user.role}
+            </span>
+          </div>
+          <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem', fontSize: '1.1rem', maxWidth: '600px' }}>
+            {user.headline || "Add a professional headline to showcase your expertise"}
+          </p>
+          
+          <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'inherit' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              <Mail size={16} /> {user.email}
+            </div>
+            {user.location && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                <MapPin size={16} /> {user.location}
+              </div>
+            )}
+            {user.website && (
+              <a href={user.website.startsWith('http') ? user.website : `https://${user.website}`} 
+                 target="_blank" rel="noopener noreferrer"
+                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--primary)', textDecoration: 'none', fontSize: '0.9rem' }}>
+                <Globe size={16} /> {user.website.replace(/^https?:\/\//, '')}
+              </a>
+            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+              <Calendar size={16} /> Member since {joinDate}
+            </div>
+          </div>
+        </div>
+
+        {/* Edit toggle */}
+        <button
+          onClick={() => setEditing(e => !e)}
+          className={editing ? 'nav-btn-outline' : 'btn-primary'}
+          style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0, alignSelf: 'flex-start', margin: '0 auto' }}
+        >
+          {editing ? <><X size={18} /> Cancel</> : <><Edit3 size={18} /> Edit Profile</>}
+        </button>
 
         {/* Avatar-changed notice */}
         {editing && avatarPreview && avatarPreview !== (profileData.user.avatar || '') && (
-          <div style={{ marginTop: '1rem', fontSize: '0.85rem', color: 'var(--primary)', fontWeight: '600' }}>
+          <div style={{ width: '100%', marginTop: '1rem', fontSize: '0.85rem', color: 'var(--primary)', fontWeight: '600', textAlign: 'center' }}>
             📷 New photo selected — click "Save Changes" to apply it.
           </div>
         )}
       </motion.div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem' }}>
+
+      <div className="profile-main-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: '2rem' }}>
 
         {/* ── Left ── */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', minWidth: '0' }}>
 
-          {/* Stats — live from DB */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: '1rem' }}>
+        {/* Stats — live from DB */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
             {isInstructor ? (
               <>
                 <StatCard icon={<BookOpen size={22} />} label="Courses Created" value={stats?.total_courses ?? 0} color="#6366f1" />
@@ -317,7 +357,7 @@ const Profile = () => {
           {editing && (
             <div>
                 {/* Tabs */}
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: 'var(--bg-subtle)', padding: '0.4rem', borderRadius: '12px', width: 'fit-content' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', background: 'var(--bg-subtle)', padding: '0.4rem', borderRadius: '12px', width: 'fit-content', flexWrap: 'wrap' }}>
                   {['profile', 'security'].map(tab => (
                     <button key={tab} onClick={() => setActiveTab(tab)} style={{
                       padding: '0.5rem 1.25rem', borderRadius: '8px', border: 'none', cursor: 'pointer',
@@ -343,7 +383,7 @@ const Profile = () => {
                         <input className="input-field" value={form.name} onChange={e => setForm({...form, name: e.target.value})} placeholder="Your full name" />
                       </Field>
 
-                      <Field label={isInstructor ? 'Professional Headline' : 'Learning Headline'} icon={<Briefcase size={15} />}>
+                      <Field label={isInstructor ? 'Professional Designation' : 'Current Role / Headline'} icon={<Briefcase size={15} />}>
                         <input className="input-field" value={form.headline} onChange={e => setForm({...form, headline: e.target.value})}
                           placeholder={isInstructor ? 'e.g. Senior Developer & Educator' : 'e.g. Aspiring Software Engineer'} />
                       </Field>
@@ -354,7 +394,7 @@ const Profile = () => {
                           style={{ minHeight: '90px', resize: 'vertical' }} />
                       </Field>
 
-                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
                         <Field label="Location" icon={<MapPin size={15} />}>
                           <input className="input-field" value={form.location} onChange={e => setForm({...form, location: e.target.value})} placeholder="e.g. Mumbai, India" />
                         </Field>
@@ -362,6 +402,34 @@ const Profile = () => {
                           <input className="input-field" value={form.website} onChange={e => setForm({...form, website: e.target.value})} placeholder="https://..." />
                         </Field>
                       </div>
+
+                      {isInstructor && (
+                        <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem', background: 'rgba(99,102,241,0.05)', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.1)' }}>
+                            <h4 style={{ margin: 0, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Briefcase size={18} /> Professional & Payment Details</h4>
+                            
+                            <Field label="Experience / Credentials" icon={<Award size={15} />}>
+                                <input className="input-field" value={form.experience} onChange={e => setForm({...form, experience: e.target.value})} placeholder="e.g. 10+ years in Web Development" />
+                            </Field>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                <Field label="UPI ID" icon={<Globe size={15} />}>
+                                    <input className="input-field" value={form.upi_id} onChange={e => setForm({...form, upi_id: e.target.value})} placeholder="yourname@upi" />
+                                </Field>
+                                <Field label="UPI QR Code URL" icon={<Camera size={15} />}>
+                                    <input className="input-field" value={form.qr_code} onChange={e => setForm({...form, qr_code: e.target.value})} placeholder="Link to QR image" />
+                                </Field>
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
+                                <Field label="Bank Account Number" icon={<Lock size={15} />}>
+                                    <input className="input-field" value={form.bank_account} onChange={e => setForm({...form, bank_account: e.target.value})} placeholder="Account number" />
+                                </Field>
+                                <Field label="IFSC Code" icon={<Globe size={15} />}>
+                                    <input className="input-field" value={form.ifsc_code} onChange={e => setForm({...form, ifsc_code: e.target.value})} placeholder="IFSC Code" />
+                                </Field>
+                            </div>
+                        </div>
+                      )}
 
                       <button onClick={handleSaveProfile} disabled={saving} className="btn-primary"
                         style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', padding: '1rem', marginTop: '0.25rem' }}>
@@ -409,6 +477,12 @@ const Profile = () => {
                   ? 'No bio yet. Click "Edit Profile" to share your expertise.'
                   : 'No bio yet. Click "Edit Profile" to share your learning goals.')}
               </p>
+              {isInstructor && user.experience && (
+                  <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border-color)', fontSize: '0.9rem' }}>
+                      <span style={{ fontWeight: '700', color: 'var(--text-primary)' }}>Experience: </span>
+                      <span style={{ color: 'var(--text-secondary)' }}>{user.experience}</span>
+                  </div>
+              )}
             </div>
           )}
         </div>

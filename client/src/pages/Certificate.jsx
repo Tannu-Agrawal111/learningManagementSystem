@@ -40,14 +40,25 @@ const Certificate = () => {
   if (!course) return <div className="error">Course not found.</div>;
 
   return (
-    <div className="dashboard-container" style={{ minHeight: '100vh', padding: '2rem' }}>
-      <div className="no-print" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <button onClick={() => navigate(-1)} className="back-link" style={{ marginBottom: 0 }}>
+    <div className="dashboard-container" style={{ minHeight: '100vh' }}>
+      <div className="no-print" style={{ 
+        marginBottom: '2rem', 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        background: 'var(--bg-subtle)',
+        padding: '1rem 1.5rem',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border-color)'
+      }}>
+        <button onClick={() => navigate(-1)} className="back-link" style={{ marginBottom: 0, border: 'none', background: 'none', cursor: 'pointer' }}>
           <ArrowLeft size={18} /> Back to Course
         </button>
-        <button onClick={handlePrint} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Printer size={18} /> Print / Save as PDF
-        </button>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <button onClick={handlePrint} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <Printer size={18} /> Print / Save as PDF
+          </button>
+        </div>
       </div>
 
       <motion.div 
@@ -116,6 +127,7 @@ const Certificate = () => {
           padding: 20px;
           box-shadow: 0 20px 50px rgba(0,0,0,0.15);
           border-radius: 8px;
+          width: 100%;
         }
 
         .certificate-outer {
@@ -130,6 +142,17 @@ const Certificate = () => {
           text-align: center;
           position: relative;
           background: white;
+        }
+
+        @media (max-width: 768px) {
+          .certificate-inner { padding: 30px 15px; }
+          .cert-title { font-size: 1.75rem; }
+          .recipient-name { font-size: 2rem; padding: 0 10px; margin: 15px 0; }
+          .course-name { font-size: 1.5rem; }
+          .cert-body { font-size: 0.9rem; margin: 20px 0; }
+          .cert-footer { flex-direction: column; align-items: center; gap: 2rem; margin-top: 30px; }
+          .seal-outer { width: 100px; height: 100px; }
+          .signature-line { width: 150px; }
         }
 
         .cert-icon {

@@ -47,10 +47,10 @@ const Navbar = () => {
   return (
     <nav className={`navbar ${scrolled ? 'navbar-scrolled' : ''}`}>
       <div className="navbar-container">
-        <Link to="/" className="navbar-logo">
+        <div className="navbar-logo">
           <div className="logo-icon"></div>
           <span>Elevate</span>
-        </Link>
+        </div>
 
         <div className="navbar-menu">
           {user ? (

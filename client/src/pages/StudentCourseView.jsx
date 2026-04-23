@@ -21,7 +21,8 @@ import {
   DownloadCloud,
   Sparkles,
   Loader2,
-  Image
+  Image,
+  Star
 } from 'lucide-react';
 import './Student.css';
 
@@ -34,6 +35,9 @@ const StudentCourseView = () => {
   const [activeLesson, setActiveLesson] = useState(null);
   const [completingId, setCompletingId] = useState(null);
   const [showVideo, setShowVideo] = useState(false);
+  const [userRating, setUserRating] = useState(null);
+  const [ratingHover, setRatingHover] = useState(0);
+  const [submittingRating, setSubmittingRating] = useState(false);
   
   // Quiz state
   const [showQuiz, setShowQuiz] = useState(null);
@@ -64,6 +68,10 @@ const StudentCourseView = () => {
         if (data.lessons.length > 0 && !activeLesson) {
           setActiveLesson(data.lessons[0]);
         }
+        setUserRating(data.userRating);
+      } else if (res.status === 403) {
+        // Not enrolled - redirect to preview
+        navigate(`/student/courses/${courseId}/preview`);
       } else {
         setError(data.message || 'Failed to load course');
       }
@@ -107,6 +115,29 @@ const StudentCourseView = () => {
       alert('Failed to mark complete');
     } finally {
       setCompletingId(null);
+    }
+  };
+
+  const handleRate = async (rating) => {
+    setSubmittingRating(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/rate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ rating }),
+      });
+      if (res.ok) {
+        setUserRating(rating);
+        fetchCourseDetails(); // Refresh course stats
+      }
+    } catch (err) {
+      alert('Failed to save rating');
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -301,43 +332,64 @@ const StudentCourseView = () => {
     
     return (
       <div className="lesson-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        <div className="main-lesson-body">
-            {/* Text Content - Rich Format */}
-            <div className="glass-panel rich-content-container" style={{ padding: '3rem', marginBottom: '2rem', background: 'white' }}>
+        <div className="main-lesson-body" style={{ height: 'calc(100vh - 280px)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Text Content - Rich Format - SCROLLABLE */}
+            <div 
+              className="glass-panel rich-content-container scroll-hide" 
+              style={{ 
+                padding: '2.5rem', 
+                background: 'white', 
+                flexGrow: 1, 
+                maxHeight: '600px', 
+                overflowY: 'auto', 
+                borderRadius: '16px', 
+                border: '1px solid var(--border-color)',
+                boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.02)'
+              }}
+            >
               {renderRichText(activeLesson.content)}
             </div>
 
-            {/* Resources Section - NOW PROMINENT BELOW CONTENT */}
+            {/* Resources Section - NOW STICKY/BOTTOM */}
             {(resources.length > 0 || activeLesson.url) && (
-                <div className="glass-panel" style={{ padding: '2rem', marginBottom: '2rem', background: 'var(--bg-subtle)', border: '1px solid var(--border-color)' }}>
-                    <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <DownloadCloud size={24} className="text-primary" /> Module Assets & Resources
+                <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '16px', flexShrink: 0 }}>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <DownloadCloud size={20} className="text-primary" /> Module Assets
                     </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
                         {/* Primary Resource */}
                         {activeLesson.url && (
-                            <a href={activeLesson.url} target="_blank" rel="noopener noreferrer" className="resource-item-btn glass-panel" style={{ padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '1rem', background: 'white' }}>
-                                <div style={{ background: 'var(--primary)', color: 'white', padding: '0.6rem', borderRadius: '10px' }}>
-                                    {activeLesson.type === 'video' ? <Video size={20} /> : <FileText size={20} />}
+                            <a href={activeLesson.url} target="_blank" rel="noopener noreferrer" className="resource-item-btn glass-panel" style={{ padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'white', fontSize: '0.85rem' }}>
+                                <div style={{ background: 'var(--primary)', color: 'white', padding: '0.4rem', borderRadius: '8px' }}>
+                                    {activeLesson.type === 'video' ? <Video size={14} /> : <FileText size={14} />}
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: '700' }}>{activeLesson.type === 'video' ? 'Watch Lesson Video' : 'Primary Handout'}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Main Course Material</div>
-                                </div>
+                                <span style={{ fontWeight: '600' }}>{activeLesson.type === 'video' ? 'Watch Video' : 'Lesson File'}</span>
                             </a>
                         )}
 
                         {/* Additional Resources */}
                         {resources.map((res, idx) => (
-                            <a key={res.id || idx} href={res.url} target="_blank" rel="noopener noreferrer" className="resource-item-btn glass-panel" style={{ padding: '1.25rem', textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '1rem', background: 'white' }}>
-                                <div style={{ background: 'var(--bg-subtle)', color: 'var(--primary)', padding: '0.6rem', borderRadius: '10px', border: '1px solid var(--primary-light)' }}>
-                                    {res.type === 'video' ? <Video size={20} /> : (res.type === 'pdf' ? <FileText size={20} /> : (res.type === 'image' ? <Image size={20} /> : <Download size={20} />))}
+                            <a key={res.id || idx} href={res.url} target="_blank" rel="noopener noreferrer" className="resource-item-btn glass-panel" style={{ padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'white', fontSize: '0.85rem' }}>
+                                <div style={{ background: 'var(--bg-subtle)', color: 'var(--primary)', padding: '0.4rem', borderRadius: '8px', border: '1px solid var(--primary-light)' }}>
+                                    {res.type === 'video' ? <Video size={14} /> : <FileText size={14} />}
                                 </div>
-                                <div>
-                                    <div style={{ fontSize: '0.9rem', fontWeight: '700' }}>{res.title}</div>
-                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', textTransform: 'capitalize' }}>{res.type} resource</div>
-                                </div>
+                                <span style={{ fontWeight: '600' }}>{res.title}</span>
                             </a>
+                        ))}
+                    </div>
+                </div>
+            )}
+            
+            {/* Benefits Section */}
+            {course.benefits && JSON.parse(course.benefits || '[]').length > 0 && (
+                <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(16,185,129,0.03)', border: '1px solid rgba(16,185,129,0.1)', borderRadius: '16px' }}>
+                    <h3 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Award size={16} className="text-secondary" /> Learning Outcomes</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                        {JSON.parse(course.benefits || '[]').map((b, i) => (
+                            <div key={i} style={{ display: 'flex', gap: '0.4rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
+                                <CheckCircle2 size={14} className="text-secondary" style={{ flexShrink: 0, marginTop: '2px' }} />
+                                {b}
+                            </div>
                         ))}
                     </div>
                 </div>
@@ -360,9 +412,14 @@ const StudentCourseView = () => {
       <div className="dashboard-container">
         <div className="empty-state">
           <div className="empty-state-icon"><Lock size={48} /></div>
-          <h2>Access Denied</h2>
+          <h2>Enrollment Required</h2>
           <p>{error}</p>
-          <Link to="/student/catalog" className="btn-primary" style={{marginTop: '1rem'}}>Go to Catalog</Link>
+          <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+              <Link to={`/student/courses/${courseId}/preview`} className="nav-btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                Preview Course
+              </Link>
+              <Link to="/student/catalog" className="btn-primary">View Catalog</Link>
+          </div>
         </div>
       </div>
     );
@@ -372,12 +429,60 @@ const StudentCourseView = () => {
 
   return (
     <>
-      <div className="dashboard-container student-container" style={{ maxWidth: '1400px' }}>
-      <div style={{ display: 'flex', gap: '2rem' }}>
+      <div className="dashboard-container student-container course-view-container" style={{ maxWidth: '1400px' }}>
+      <style>{`
+        .course-view-container {
+          padding: 100px 2rem 2rem;
+        }
+        .course-main-layout {
+          display: flex;
+          gap: 2rem;
+        }
+        @media (max-width: 1024px) {
+          .course-main-layout {
+            flex-direction: column;
+          }
+          .course-sidebar {
+            width: 100% !important;
+          }
+          .main-lesson-body {
+            height: auto !important;
+          }
+          .rich-content-container {
+            max-height: none !important;
+          }
+        }
+        @media (max-width: 768px) {
+          .course-view-container { padding: 85px 1rem 1rem; }
+          .course-header-actions {
+            flex-direction: column;
+            width: 100%;
+          }
+          .course-header-actions > button, 
+          .course-header-actions > div {
+            width: 100%;
+          }
+          .action-buttons-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+          }
+          .course-title-header {
+            flex-direction: column;
+            align-items: flex-start !important;
+            gap: 1.5rem;
+          }
+          .doubt-drawer {
+            width: 100% !important;
+            padding: 1.5rem !important;
+          }
+        }
+      `}</style>
+      <div className="course-main-layout">
         
         {/* Left Sidebar - Curriculum */}
-        <div style={{ width: '350px', flexShrink: 0 }}>
-            <Link to="/dashboard" className="back-link">
+        <div className="course-sidebar" style={{ width: '350px', flexShrink: 0 }}>
+            <Link to="/dashboard" className="back-link" style={{ marginBottom: '1.5rem' }}>
                 <ArrowLeft size={18} /> Back to Dashboard
             </Link>
             
@@ -423,9 +528,34 @@ const StudentCourseView = () => {
 
         {/* Right Section - Content & Interaction */}
         <div style={{ flexGrow: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-                <h1 style={{ fontSize: '2rem' }}>{activeLesson?.title}</h1>
-                <div style={{ display: 'flex', gap: '0.75rem' }}>
+            <div className="course-title-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                    <h1 style={{ fontSize: '2rem', margin: 0 }}>{activeLesson?.title}</h1>
+                    <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <span>Course by <Link to={`/instructor/profile/${course.instructor_id}`} style={{ fontWeight: '700', color: 'var(--primary)', textDecoration: 'none' }}>{course.instructor_name}</Link></span>
+                        {course.average_rating > 0 && (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', color: '#f59e0b', fontWeight: '700' }}>
+                                <Star size={16} fill="#f59e0b" /> {Number(course.average_rating).toFixed(1)} ({course.total_ratings})
+                            </span>
+                        )}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', marginLeft: '0.5rem' }}>
+                            {[1, 2, 3, 4, 5].map((star) => (
+                                <Star 
+                                    key={star}
+                                    size={18}
+                                    style={{ cursor: submittingRating ? 'default' : 'pointer', transition: 'all 0.2s' }}
+                                    fill={(ratingHover || userRating) >= star ? '#f59e0b' : 'none'}
+                                    color={(ratingHover || userRating) >= star ? '#f59e0b' : '#cbd5e1'}
+                                    onMouseEnter={() => !submittingRating && setRatingHover(star)}
+                                    onMouseLeave={() => !submittingRating && setRatingHover(0)}
+                                    onClick={() => !submittingRating && handleRate(star)}
+                                />
+                            ))}
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginLeft: '0.3rem' }}>{userRating ? 'Your rating' : 'Rate this course'}</span>
+                        </div>
+                    </div>
+                </div>
+                <div className="course-header-actions" style={{ display: 'flex', gap: '0.75rem' }}>
                     <button onClick={() => setShowDoubts(!showDoubts)} className="nav-btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <MessageCircle size={18} /> Doubts
                     </button>
@@ -452,7 +582,7 @@ const StudentCourseView = () => {
 
             {renderLessonContent()}
 
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+            <div className="action-buttons-grid" style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
                 <button onClick={() => handleStartQuiz(activeLesson.id)} className="glass-panel" style={{ padding: '1rem 2rem', cursor: 'pointer', flexGrow: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1rem', fontWeight: '700' }}>
                     <HelpCircle size={24} className="text-primary" /> Take Lesson Quiz
                 </button>
@@ -539,6 +669,7 @@ const StudentCourseView = () => {
                 <motion.div 
                     initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
                     transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                    className="doubt-drawer"
                     style={{ position: 'fixed', top: 0, right: 0, width: '480px', height: '100%', background: 'white', zIndex: 9999, boxShadow: '-15px 0 50px rgba(0,0,0,0.2)', padding: '2.5rem', display: 'flex', flexDirection: 'column' }}
                 >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem' }}>

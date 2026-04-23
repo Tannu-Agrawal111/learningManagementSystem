@@ -90,6 +90,20 @@ router.get('/me', (req, res) => {
   }
 });
 
+// ─── GET /profile/public/:userId ──────────────────────────────────────────────
+router.get('/profile/public/:userId', authMiddleware, (req, res) => {
+    const { userId } = req.params;
+    db.get(
+        `SELECT id, name, role, bio, headline, experience, avatar, location, website, 
+                strftime('%Y-%m-%dT%H:%M:%SZ', created_at) as created_at 
+         FROM users WHERE id = ?`, 
+        [userId], 
+        (err, user) => {
+        if (err || !user) return res.status(404).json({ message: 'User not found' });
+        res.json(user);
+    });
+});
+
 // ─── GET /profile ─────────────────────────────────────────────────────────────
 router.get('/profile', authMiddleware, (req, res) => {
   const userId = req.user.id;
@@ -149,7 +163,11 @@ router.get('/profile', authMiddleware, (req, res) => {
 // ─── PUT /profile ─────────────────────────────────────────────────────────────
 router.put('/profile', authMiddleware, async (req, res) => {
   const userId = req.user.id;
-  const { name, bio, headline, location, website, avatar, currentPassword, newPassword } = req.body;
+  const { 
+    name, bio, headline, location, website, avatar, 
+    experience, upi_id, qr_code, bank_account, ifsc_code,
+    currentPassword, newPassword 
+  } = req.body;
 
   if (!name || !name.trim()) {
     return res.status(400).json({ message: 'Name is required' });
@@ -172,17 +190,25 @@ router.put('/profile', authMiddleware, async (req, res) => {
         hashedPassword = await bcrypt.hash(newPassword, salt);
       }
 
-      // avatar is a base64 data-url string (or empty to keep existing)
       const avatarValue = avatar !== undefined ? avatar : user.avatar;
 
-      db.run(
-        `UPDATE users SET name=?, bio=?, headline=?, location=?, website=?, password=?, avatar=? WHERE id=?`,
-        [name.trim(), bio || '', headline || '', location || '', website || '', hashedPassword, avatarValue || '', userId],
-        (err) => {
-          if (err) return res.status(500).json({ message: 'Failed to update profile' });
-          res.json({ message: 'Profile updated successfully' });
-        }
-      );
+      const query = `
+        UPDATE users SET 
+          name=?, bio=?, headline=?, location=?, website=?, 
+          avatar=?, experience=?, upi_id=?, qr_code=?, 
+          bank_account=?, ifsc_code=?, password=? 
+        WHERE id=?
+      `;
+      const params = [
+        name.trim(), bio || '', headline || '', location || '', website || '', 
+        avatarValue || '', experience || '', upi_id || '', qr_code || '', 
+        bank_account || '', ifsc_code || '', hashedPassword, userId
+      ];
+
+      db.run(query, params, (err) => {
+        if (err) return res.status(500).json({ message: 'Failed to update profile' });
+        res.json({ message: 'Profile updated successfully' });
+      });
     });
   } catch {
     res.status(500).json({ message: 'Server error' });

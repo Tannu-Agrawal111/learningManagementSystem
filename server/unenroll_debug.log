@@ -1,0 +1,10 @@
+[2026-04-23T11:33:28.738Z] POST Request - Enrollment: 4, Student: 5
+[2026-04-23T11:33:28.753Z] Deleted successfully. Changes: 1
+[2026-04-23T11:36:38.577Z] POST Request - Enrollment: 5, Student: 5
+[2026-04-23T11:36:38.590Z] Deleted successfully. Changes: 1
+[2026-04-23T13:05:14.218Z] POST Request - Enrollment: 3, Student: 5
+[2026-04-23T13:05:14.234Z] Deleted successfully. Changes: 1
+[2026-04-23T13:14:14.487Z] POST Request - Enrollment: 8, Student: 5
+[2026-04-23T13:14:14.499Z] Deleted successfully. Changes: 1
+[2026-04-23T15:03:03.883Z] POST Request - Enrollment: 6, Student: 5
+[2026-04-23T15:03:03.898Z] Deleted successfully. Changes: 1
