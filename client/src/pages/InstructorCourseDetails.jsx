@@ -706,22 +706,49 @@ const InstructorCourseDetails = () => {
                                                 {lesson.content.length > 100 ? lesson.content.substring(0, 100) + '...' : lesson.content}
                                             </div>
                                         )}
-                                        {(() => {
-                                            let res = [];
-                                            try { res = typeof lesson.resources === 'string' ? JSON.parse(lesson.resources) : (lesson.resources || []); } catch(e) { res = []; }
-                                            if (!Array.isArray(res) || res.length === 0) return null;
-                                            return (
-                                                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                                                    {res.map((r, i) => (
-                                                        <span key={r.id || i} style={{ fontSize: '0.7rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.6rem', borderRadius: '4px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                                                            📎 {r.title || 'Resource'}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            );
-                                        })()}
                                     </div>
                                 )}
+
+                                {/* Resources visible for all types */}
+                                {(() => {
+                                    let res = [];
+                                    try { res = typeof lesson.resources === 'string' ? JSON.parse(lesson.resources) : (lesson.resources || []); } catch(e) { res = []; }
+                                    if (!Array.isArray(res) || res.length === 0) return null;
+                                    return (
+                                        <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed var(--border-color)' }}>
+                                            <h5 style={{ fontSize: '0.85rem', fontWeight: '700', marginBottom: '0.75rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <Paperclip size={14} /> Module Resources
+                                            </h5>
+                                            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                                                {res.map((r, i) => (
+                                                    <a 
+                                                        key={r.id || i} 
+                                                        href={r.url} 
+                                                        target="_blank" 
+                                                        rel="noopener noreferrer"
+                                                        className="glass-panel hover-bg"
+                                                        style={{ 
+                                                            fontSize: '0.8rem', 
+                                                            padding: '0.5rem 0.8rem', 
+                                                            borderRadius: '8px', 
+                                                            display: 'flex', 
+                                                            alignItems: 'center', 
+                                                            gap: '0.5rem',
+                                                            textDecoration: 'none',
+                                                            color: 'var(--text-primary)',
+                                                            border: '1px solid var(--border-color)',
+                                                            background: 'white'
+                                                        }}
+                                                    >
+                                                        <span style={{ fontSize: '0.65rem', fontWeight: '800', background: 'var(--primary)', color: 'white', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>{r.type?.toUpperCase() || 'LINK'}</span>
+                                                        <span style={{ fontWeight: '600' }}>{r.title || 'Resource'}</span>
+                                                        <ExternalLink size={12} className="text-muted" />
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
                             </div>
                         </motion.div>
                     )}

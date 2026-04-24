@@ -20,7 +20,8 @@ import {
   ChevronRight,
   TrendingUp,
   Tag,
-  Trash2
+  Trash2,
+  Search
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import './Instructor.css';
@@ -34,10 +35,13 @@ const InstructorDashboard = () => {
   const [editTitle, setEditTitle] = useState('');
   const [editDesc, setEditDesc] = useState('');
   const [editBenefits, setEditBenefits] = useState(['']);
+  const [profile, setProfile] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetchCourses();
     fetchActivity();
+    fetchProfile();
   }, []);
 
   const fetchCourses = async () => {
@@ -69,8 +73,31 @@ const InstructorDashboard = () => {
     } catch (err) { console.error(err); }
   };
 
+  const fetchProfile = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/auth/profile', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfile(data.user);
+      }
+    } catch (err) { console.error(err); }
+  };
+
   const handleEditCourse = async (e) => {
     e.preventDefault();
+    
+    // Check payment details for paid courses
+    if (editingCourse.is_paid === 1) {
+      const hasPayment = profile?.upi_id || (profile?.bank_account && profile?.ifsc_code);
+      if (!hasPayment) {
+        alert('Payment details missing! Please add UPI or Bank details in your profile before updating a paid course.');
+        return;
+      }
+    }
+
     try {
       const token = localStorage.getItem('token');
       const res = await fetch(`http://localhost:5000/api/instructor/courses/${editingCourse.id}/edit`, {
@@ -90,6 +117,9 @@ const InstructorDashboard = () => {
       if (res.ok) {
         setEditingCourse(null);
         fetchCourses();
+      } else {
+        const data = await res.json();
+        alert(data.message || 'Failed to update course');
       }
     } catch (err) {
       alert('Failed to update course');
@@ -113,8 +143,13 @@ const InstructorDashboard = () => {
     } catch (err) { alert('Error occurred'); }
   };
 
-  const myCourses = courses.filter(c => c.instructor_id === user.id);
-  const otherCourses = courses.filter(c => c.instructor_id !== user.id);
+  const filteredCourses = courses.filter(c => 
+    c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (c.instructor_name && c.instructor_name.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const myCourses = filteredCourses.filter(c => c.instructor_id === user.id);
+  const otherCourses = filteredCourses.filter(c => c.instructor_id !== user.id);
 
   if (loading) {
     return (
@@ -292,13 +327,18 @@ const InstructorDashboard = () => {
         </div>
       )}
 
-      <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <Globe size={24} className="text-secondary" />
-        <h2 style={{ fontSize: '1.75rem' }}>Global Instructor Feed</h2>
+      <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <Globe size={24} className="text-secondary" />
+          <h2 style={{ fontSize: '1.75rem' }}>Global Instructor Feed</h2>
+        </div>
+        <Link to="/instructor/catalog" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', borderRadius: '100px', padding: '0.6rem 1.5rem', fontSize: '0.9rem' }}>
+           View All Courses <ExternalLink size={18} />
+        </Link>
       </div>
 
       <div className="courses-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
-        {otherCourses.map((course, index) => (
+        {otherCourses.slice(0, 6).map((course, index) => (
           <motion.div 
             key={course.id} 
             initial={{ opacity: 0, scale: 0.95 }}

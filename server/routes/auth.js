@@ -111,6 +111,7 @@ router.get('/profile', authMiddleware, (req, res) => {
 
   db.get(
     `SELECT id, name, email, role, bio, headline, location, website, avatar,
+            experience, upi_id, qr_code, bank_account, ifsc_code,
             strftime('%Y-%m-%dT%H:%M:%SZ', created_at) as created_at
      FROM users WHERE id = ?`,
     [userId],

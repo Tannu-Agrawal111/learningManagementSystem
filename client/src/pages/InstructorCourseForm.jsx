@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DollarSign, Tag, BookOpen, FileText, ArrowLeft, Plus, Check, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
@@ -11,16 +11,50 @@ const InstructorCourseForm = () => {
   const [price, setPrice] = useState('');
   const [benefits, setBenefits] = useState(['']);
   const [error, setError] = useState('');
+  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const res = await fetch('http://localhost:5000/api/auth/profile', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setProfile(data.user);
+        }
+      } catch (err) {
+        console.error('Failed to fetch profile', err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
 
-    if (isPaid && (!price || parseFloat(price) <= 0)) {
-      setError('Please enter a valid price for the paid course.');
-      return;
+    if (isPaid) {
+      if (!price || parseFloat(price) <= 0) {
+        setError('Please enter a valid price for the paid course.');
+        return;
+      }
+      
+      const hasPaymentDetails = profile?.upi_id || (profile?.bank_account && profile?.ifsc_code);
+      if (!hasPaymentDetails) {
+        setError(
+          <span>
+            Payment details missing! Please add your UPI ID or Bank details in your 
+            <Link to="/profile" style={{ color: 'var(--primary)', textDecoration: 'underline', marginLeft: '4px' }}>
+              profile
+            </Link> before launching a paid course.
+          </span>
+        );
+        return;
+      }
     }
 
     setLoading(true);

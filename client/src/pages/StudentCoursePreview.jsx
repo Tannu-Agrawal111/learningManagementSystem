@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Lock, PlayCircle, ShoppingCart, Eye, Users, User, Star, Zap, Shield, CheckCircle, FileText, Video, Loader2, CreditCard, X, Award, Briefcase } from 'lucide-react';
+import { ArrowLeft, Lock, PlayCircle, ShoppingCart, Eye, Users, User, Star, Zap, Shield, CheckCircle, FileText, Video, Loader2, CreditCard, X, Award, Briefcase, AlertCircle } from 'lucide-react';
 import './Student.css';
 
 const formatPrice = (p) => `₹${Number(p).toLocaleString('en-IN')}`;
@@ -263,7 +263,10 @@ const StudentCoursePreview = () => {
 };
 
 const PaymentOverlay = ({ course, onClose, onSuccess }) => {
-  const [step, setStep] = useState('confirm');
+  const [step, setStep] = useState('method_selection'); // method_selection, details, auth, processing, success, failed
+  const [method, setMethod] = useState(''); // upi, qr, bank
+  const [studentDetails, setStudentDetails] = useState('');
+  const [pin, setPin] = useState('');
   const [error, setError] = useState('');
   const [instructor, setInstructor] = useState(null);
 
@@ -272,100 +275,226 @@ const PaymentOverlay = ({ course, onClose, onSuccess }) => {
       .then(r => r.json()).then(d => setInstructor(d.instructor)).catch(console.error);
   }, [course.instructor_id]);
 
+  const handleMethodSelect = (m) => {
+    setMethod(m);
+    setStep('details');
+  };
+
+  const handleProceedToAuth = () => {
+    if (!studentDetails.trim()) {
+      setError(`Please enter your ${method === 'upi' ? 'UPI ID' : 'Bank Account Number'} to proceed.`);
+      return;
+    }
+    setError('');
+    setStep('auth');
+  };
+
   const handlePay = async () => {
+    if (pin.length < 4) {
+      setError('Please enter a valid 4-digit or 6-digit PIN.');
+      return;
+    }
+    setError('');
     setStep('processing');
+    
     try {
       const token = localStorage.getItem('token');
+      // 1. Create mock order
       const orderRes = await fetch('http://localhost:5000/api/payment/create-order', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ courseId: course.id })
       });
       const orderData = await orderRes.json();
-      if (!orderRes.ok) { setError(orderData.message); setStep('confirm'); return; }
+      if (!orderRes.ok) { setError(orderData.message); setStep('details'); return; }
 
-      if (orderData.isMock) {
-        await new Promise(r => setTimeout(r, 1500));
-        const verifyRes = await fetch('http://localhost:5000/api/payment/verify', {
-          method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ razorpay_order_id: orderData.orderId, razorpay_payment_id: 'demo_' + Date.now(), courseId: course.id, isMock: true })
-        });
-        if (verifyRes.ok) { setStep('success'); setTimeout(onSuccess, 1800); } else { setStep('failed'); }
-        return;
+      // 2. Simulate bank processing delay
+      await new Promise(r => setTimeout(r, 2500));
+      
+      // 3. Verify mock payment
+      const verifyRes = await fetch('http://localhost:5000/api/payment/verify', {
+        method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ 
+          razorpay_order_id: orderData.orderId || `order_mock_${Date.now()}`, 
+          razorpay_payment_id: `txn_${Math.random().toString(36).substr(2, 9)}`, 
+          courseId: course.id, 
+          isMock: true 
+        })
+      });
+      
+      if (verifyRes.ok) { 
+        setStep('success'); 
+        setTimeout(onSuccess, 2000); 
+      } else { 
+        setStep('failed'); 
       }
-
-      const options = {
-        key: orderData.keyId, amount: orderData.amount, currency: orderData.currency,
-        name: 'EduFlow LMS', description: course.title, order_id: orderData.orderId,
-        handler: async (response) => {
-          const vr = await fetch('http://localhost:5000/api/payment/verify', {
-            method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ ...response, courseId: course.id })
-          });
-          if (vr.ok) { setStep('success'); setTimeout(onSuccess, 1800); } else { setStep('failed'); }
-        },
-        theme: { color: '#6366f1' }, modal: { ondismiss: () => setStep('confirm') }
-      };
-      const rzp = new window.Razorpay(options);
-      rzp.open();
-      setStep('confirm');
-    } catch { setError('Unexpected error. Try again.'); setStep('confirm'); }
+    } catch { 
+      setError('Bank server unreachable. Try again.'); 
+      setStep('details'); 
+    }
   };
+
+  if (!instructor) return null;
+
+  const hasUpi = !!instructor.upi_id;
+  const hasBank = !!instructor.bank_account;
+  const hasQr = !!instructor.qr_code;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-      onClick={step === 'confirm' ? onClose : undefined}>
-      <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} onClick={e => e.stopPropagation()}
-        className="glass-panel" style={{ maxWidth: '420px', width: '95%', padding: '2.5rem', textAlign: 'center', position: 'relative' }}>
-        {step === 'confirm' && (
-          <button onClick={onClose} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'var(--bg-subtle)', border: 'none', borderRadius: '50%', padding: '0.4rem', cursor: 'pointer', display: 'flex' }}><X size={18} /></button>
-        )}
-        {step === 'confirm' && (
-          <>
-            <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', color: 'white' }}><ShoppingCart size={28} /></div>
-            <h2 style={{ marginBottom: '0.4rem' }}>Complete Purchase</h2>
-            <p style={{ color: 'var(--text-muted)', marginBottom: '1.25rem', fontSize: '0.9rem' }}>{course.title}</p>
-            <div style={{ background: 'var(--bg-subtle)', borderRadius: '10px', padding: '1rem', marginBottom: '1.25rem', fontSize: '0.9rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: '800', fontSize: '1.1rem' }}>
-                <span>Total</span><span style={{ color: 'var(--primary)' }}>{formatPrice(course.price)}</span>
-              </div>
+      style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={(step === 'method_selection' || step === 'details' || step === 'auth') ? onClose : undefined}>
+      <motion.div initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} onClick={e => e.stopPropagation()}
+        className="glass-panel" style={{ maxWidth: '450px', width: '95%', padding: '0', overflow: 'hidden', position: 'relative', background: '#fff' }}>
+        
+        {/* Header */}
+        <div style={{ background: 'linear-gradient(135deg, #1e3a8a, #3b82f6)', color: 'white', padding: '1.5rem', textAlign: 'center', position: 'relative' }}>
+            {(step === 'details' || step === 'auth') && (
+              <button onClick={() => step === 'auth' ? setStep('details') : setStep('method_selection')} style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', padding: '0.4rem', cursor: 'pointer', color: 'white', display: 'flex' }}><ArrowLeft size={18} /></button>
+            )}
+            <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', padding: '0.4rem', cursor: 'pointer', color: 'white', display: 'flex' }}><X size={18} /></button>
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                <Shield size={24} />
+                <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Secure Direct Transfer</h2>
             </div>
+            <div style={{ fontSize: '1.5rem', fontWeight: '800', margin: '0.5rem 0' }}>{formatPrice(course.price)}</div>
+            <div style={{ fontSize: '0.85rem', opacity: 0.9 }}>Paying to: <strong>{course.instructor_name}</strong></div>
+        </div>
 
-            {instructor && (instructor.upi_id || instructor.bank_account) && (
-                <div style={{ textAlign: 'left', background: 'rgba(99,102,241,0.05)', borderRadius: '12px', padding: '1rem', marginBottom: '1.25rem', fontSize: '0.8rem', border: '1px dashed var(--primary)' }}>
-                    <div style={{ fontWeight: '800', color: 'var(--primary)', marginBottom: '0.4rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                        <Briefcase size={14} /> Instructor Payment Details
+        <div style={{ padding: '2rem' }}>
+            {(!hasUpi && !hasBank && !hasQr) ? (
+                <div style={{ textAlign: 'center', color: '#ef4444' }}>
+                    <AlertCircle size={48} style={{ margin: '0 auto 1rem' }} />
+                    <h3 style={{ marginBottom: '0.5rem' }}>Payment Unavailable</h3>
+                    <p style={{ fontSize: '0.9rem' }}>The instructor has not provided any bank or UPI details to receive payments. You cannot enroll at this time.</p>
+                </div>
+            ) : step === 'method_selection' ? (
+                <div>
+                    <h3 style={{ marginBottom: '1.5rem', fontSize: '1.1rem', color: 'var(--text-primary)', textAlign: 'center' }}>Choose Payment Method</h3>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {hasUpi && (
+                            <button onClick={() => handleMethodSelect('upi')} className="payment-method-btn" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '12px', background: 'white', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left' }}>
+                                <div style={{ background: '#e0e7ff', color: '#4f46e5', padding: '0.6rem', borderRadius: '8px' }}><Zap size={20} /></div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--text-primary)' }}>UPI Transfer</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Pay directly to instructor's UPI ID</div>
+                                </div>
+                            </button>
+                        )}
+                        {hasBank && (
+                            <button onClick={() => handleMethodSelect('bank')} className="payment-method-btn" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '12px', background: 'white', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left' }}>
+                                <div style={{ background: '#dcfce7', color: '#16a34a', padding: '0.6rem', borderRadius: '8px' }}><Briefcase size={20} /></div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--text-primary)' }}>Bank Transfer</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>IMPS / NEFT to instructor's account</div>
+                                </div>
+                            </button>
+                        )}
+                        {hasQr && (
+                            <button onClick={() => handleMethodSelect('qr')} className="payment-method-btn" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '1rem', border: '1px solid var(--border-color)', borderRadius: '12px', background: 'white', cursor: 'pointer', transition: 'all 0.2s', textAlign: 'left' }}>
+                                <div style={{ background: '#f3e8ff', color: '#9333ea', padding: '0.6rem', borderRadius: '8px' }}><CreditCard size={20} /></div>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ fontWeight: '700', fontSize: '1rem', color: 'var(--text-primary)' }}>Scan QR Code</div>
+                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Scan instructor's QR with any app</div>
+                                </div>
+                            </button>
+                        )}
                     </div>
-                    {instructor.upi_id && <div><strong>UPI ID:</strong> {instructor.upi_id}</div>}
-                    {instructor.bank_account && (
-                        <div style={{ marginTop: '0.3rem' }}>
-                            <div><strong>Bank A/C:</strong> {instructor.bank_account}</div>
-                            <div><strong>IFSC:</strong> {instructor.ifsc_code}</div>
-                        </div>
-                    )}
-                    {instructor.qr_code && (
-                        <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
-                            <img src={instructor.qr_code} alt="QR" style={{ width: '100px', borderRadius: '8px' }} />
-                        </div>
-                    )}
+                    <style>{`.payment-method-btn:hover { border-color: var(--primary) !important; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }`}</style>
+                </div>
+            ) : step === 'details' ? (
+                <div style={{ animation: 'fadeIn 0.3s ease' }}>
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.25rem', marginBottom: '1.5rem' }}>
+                        <h4 style={{ fontSize: '0.85rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>Transfer To (Instructor)</h4>
+                        {method === 'upi' && <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1e3a8a' }}>{instructor.upi_id}</div>}
+                        {method === 'bank' && (
+                            <>
+                                <div style={{ fontSize: '1.1rem', fontWeight: '700', color: '#1e3a8a', marginBottom: '0.25rem' }}>A/C: {instructor.bank_account}</div>
+                                <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>IFSC: {instructor.ifsc_code}</div>
+                            </>
+                        )}
+                        {method === 'qr' && (
+                            <div style={{ textAlign: 'center' }}>
+                                <img src={instructor.qr_code} alt="QR Code" style={{ width: '150px', height: '150px', objectFit: 'contain', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0.5rem', background: 'white' }} />
+                            </div>
+                        )}
+                    </div>
+
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: '700', marginBottom: '0.5rem', color: 'var(--text-secondary)' }}>
+                            Transfer From (Your {method === 'upi' ? 'UPI ID' : 'Bank Account Number'}) <span style={{color: '#ef4444'}}>*</span>
+                        </label>
+                        <input 
+                            type="text" 
+                            value={studentDetails}
+                            onChange={(e) => setStudentDetails(e.target.value)}
+                            placeholder={method === 'upi' ? "e.g. student@okaxis" : "e.g. 0987654321"}
+                            className="input-field"
+                            style={{ width: '100%', padding: '0.8rem', fontSize: '1rem', border: '2px solid #e2e8f0' }}
+                        />
+                        <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>This ensures the money is transferred from the correct student account.</p>
+                    </div>
+
+                    {error && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem', padding: '0.5rem', background: '#fef2f2', borderRadius: '6px' }}>{error}</div>}
+
+                    <button onClick={handleProceedToAuth} className="btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.05rem', background: '#1e3a8a' }}>
+                        Proceed to Pay
+                    </button>
+                </div>
+            ) : step === 'auth' ? (
+                <div style={{ textAlign: 'center', animation: 'fadeIn 0.3s ease' }}>
+                    <Shield size={48} style={{ color: '#10b981', margin: '0 auto 1rem' }} />
+                    <h3 style={{ marginBottom: '0.5rem' }}>Bank Authentication</h3>
+                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Enter your UPI PIN or Banking Password to authorize the transfer of <strong>{formatPrice(course.price)}</strong>.</p>
+                    
+                    <div style={{ marginBottom: '1.5rem' }}>
+                        <input 
+                            type="password" 
+                            maxLength={6}
+                            value={pin}
+                            onChange={(e) => setPin(e.target.value.replace(/\D/g, ''))}
+                            placeholder="****"
+                            style={{ width: '150px', textAlign: 'center', padding: '1rem', fontSize: '1.5rem', letterSpacing: '0.5em', border: '2px solid #e2e8f0', borderRadius: '12px', outline: 'none' }}
+                        />
+                    </div>
+
+                    {error && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '1rem' }}>{error}</div>}
+
+                    <button onClick={handlePay} className="btn-primary" style={{ width: '100%', padding: '1rem', fontSize: '1.05rem', background: '#10b981' }}>
+                        Confirm & Transfer
+                    </button>
+                </div>
+            ) : step === 'processing' ? (
+                <div style={{ textAlign: 'center', padding: '2rem 0' }}>
+                    <div style={{ position: 'relative', width: '80px', height: '80px', margin: '0 auto 1.5rem' }}>
+                        <Loader2 className="animate-spin" size={80} style={{ color: '#3b82f6' }} />
+                        <Shield size={32} style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', color: '#1e3a8a' }} />
+                    </div>
+                    <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>Processing Transfer...</h3>
+                    <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Contacting your bank securely. Please do not close this window.</p>
+                </div>
+            ) : step === 'success' ? (
+                <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: 'white' }}>
+                        <CheckCircle size={40} />
+                    </div>
+                    <h2 style={{ color: '#10b981', marginBottom: '0.5rem' }}>Payment Successful!</h2>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '1rem' }}>{formatPrice(course.price)} transferred to {course.instructor_name}.</p>
+                    <div style={{ background: '#f8fafc', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                        Transaction ID: TXN{Math.floor(Math.random() * 1000000000)}
+                    </div>
+                    <p style={{ color: 'var(--primary)', fontWeight: '700', marginTop: '1.5rem' }}>Enrolling you in the course...</p>
+                </div>
+            ) : (
+                <div style={{ textAlign: 'center', padding: '1rem 0' }}>
+                    <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem', color: '#ef4444' }}>
+                        <X size={40} />
+                    </div>
+                    <h2 style={{ color: '#ef4444', marginBottom: '0.5rem' }}>Transfer Failed</h2>
+                    <p style={{ color: 'var(--text-secondary)', marginBottom: '1.5rem' }}>Your bank declined the transaction or server timed out.</p>
+                    <button onClick={() => setStep('method_selection')} className="btn-primary" style={{ width: '100%', padding: '1rem', background: '#1e3a8a' }}>Try Again</button>
                 </div>
             )}
-            {error && <div className="auth-error" style={{ marginBottom: '1rem' }}>{error}</div>}
-            <button onClick={handlePay} className="enroll-btn" style={{ width: '100%', padding: '1rem', background: 'linear-gradient(135deg,#6366f1,#8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.6rem', fontSize: '1rem', marginBottom: '0.75rem' }}>
-              <CreditCard size={20} /> Pay Now
-            </button>
-            <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>🔒 Demo mode — no real charges</p>
-          </>
-        )}
-        {step === 'processing' && (
-          <><Loader2 className="animate-spin text-primary" size={52} style={{ margin: '0.5rem auto 1.5rem' }} /><h2>Processing...</h2><p style={{ color: 'var(--text-muted)' }}>Verifying your payment.</p></>
-        )}
-        {step === 'success' && (
-          <><div style={{ width: '72px', height: '72px', borderRadius: '50%', background: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.25rem', color: 'white' }}><CheckCircle size={36} /></div><h2 style={{ color: '#10b981' }}>Payment Successful!</h2><p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>Redirecting to your course...</p></>
-        )}
-        {step === 'failed' && (
-          <><div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>❌</div><h2 style={{ color: '#ef4444' }}>Payment Failed</h2><button onClick={() => setStep('confirm')} className="enroll-btn" style={{ marginTop: '1.25rem', width: '100%' }}>Try Again</button></>
-        )}
+        </div>
       </motion.div>
     </motion.div>
   );

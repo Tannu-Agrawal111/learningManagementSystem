@@ -8,6 +8,7 @@ import InstructorDashboard from './pages/InstructorDashboard';
 import InstructorCourseForm from './pages/InstructorCourseForm';
 import InstructorCourseDetails from './pages/InstructorCourseDetails';
 import InstructorProfileView from './pages/InstructorProfileView';
+import InstructorCatalog from './pages/InstructorCatalog';
 import UserProfileView from './pages/UserProfileView';
 import StudentDashboard from './pages/StudentDashboard';
 import StudentCatalog from './pages/StudentCatalog';
@@ -41,6 +42,7 @@ function App() {
               <Route path="/instructor/dashboard" element={<PrivateRoute roleRequired="instructor"><InstructorDashboard /></PrivateRoute>} />
               <Route path="/instructor/courses/new" element={<PrivateRoute roleRequired="instructor"><InstructorCourseForm /></PrivateRoute>} />
               <Route path="/instructor/courses/:courseId" element={<PrivateRoute roleRequired="instructor"><InstructorCourseDetails /></PrivateRoute>} />
+              <Route path="/instructor/catalog" element={<PrivateRoute roleRequired="instructor"><InstructorCatalog /></PrivateRoute>} />
               <Route path="/instructor/profile/:instructorId" element={<InstructorProfileView />} />
               <Route path="/profile/:userId" element={<UserProfileView />} />
               

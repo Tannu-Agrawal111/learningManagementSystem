@@ -1,15 +1,24 @@
 const sqlite3 = require('sqlite3').verbose();
-const db = new sqlite3.Database('./database.sqlite');
+const path = require('path');
+const dbPath = path.join(__dirname, '..', 'database.sqlite'); // Go up one level
+const db = new sqlite3.Database(dbPath);
 
-db.serialize(() => {
-    db.all("PRAGMA table_info(lessons)", (err, rows) => {
-        console.log('LESSONS_COLUMNS:', JSON.stringify(rows));
-    });
-    db.all("PRAGMA table_info(enrollments)", (err, rows) => {
-        console.log('ENROLLMENTS_COLUMNS:', JSON.stringify(rows));
-    });
-    db.all("SELECT * FROM enrollments LIMIT 5", (err, rows) => {
-        console.log('ENROLLMENTS_DATA:', JSON.stringify(rows));
-    });
+db.all("SELECT name FROM sqlite_master WHERE type='table'", (err, rows) => {
+    if (err) {
+        console.error(err);
+        return;
+    }
+    console.log("Tables found:");
+    rows.forEach(row => console.log(`- ${row.name}`));
+    
+    if (rows.find(r => r.name === 'users')) {
+        db.all("PRAGMA table_info(users)", (err, cols) => {
+            console.log("\nUsers Table Columns:");
+            cols.forEach(c => console.log(`- ${c.name}`));
+            db.close();
+        });
+    } else {
+        console.log("Users table not found!");
+        db.close();
+    }
 });
-db.close();

@@ -10,7 +10,7 @@ router.use(authMiddleware);
 // @route GET /api/instructor/public/:instructorId
 router.get('/public/:instructorId', (req, res) => {
     const { instructorId } = req.params;
-    db.get('SELECT id, name, bio, headline, experience, avatar FROM users WHERE id = ? AND role = "instructor"', [instructorId], (err, instructor) => {
+    db.get('SELECT id, name, bio, headline, experience, avatar, upi_id, qr_code, bank_account, ifsc_code FROM users WHERE id = ? AND role = "instructor"', [instructorId], (err, instructor) => {
         if (err || !instructor) return res.status(404).json({ message: 'Instructor not found' });
         
         const statsQuery = `

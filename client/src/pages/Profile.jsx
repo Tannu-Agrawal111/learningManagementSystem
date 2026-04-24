@@ -18,6 +18,7 @@ const Profile = () => {
   const [toast, setToast]               = useState(null);
   const [avatarPreview, setAvatarPreview] = useState(null);
   const fileInputRef = useRef(null);
+  const qrInputRef = useRef(null);
   const navigate = useNavigate();
 
   const [form, setForm] = useState({ 
@@ -76,6 +77,19 @@ const Profile = () => {
       const base64 = ev.target.result;
       setAvatarPreview(base64);
       setForm(f => ({ ...f, avatar: base64 }));
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleQrChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      return showToast('error', 'Image must be smaller than 2 MB.');
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setForm(f => ({ ...f, qr_code: ev.target.result }));
     };
     reader.readAsDataURL(file);
   };
@@ -415,8 +429,29 @@ const Profile = () => {
                                 <Field label="UPI ID" icon={<Globe size={15} />}>
                                     <input className="input-field" value={form.upi_id} onChange={e => setForm({...form, upi_id: e.target.value})} placeholder="yourname@upi" />
                                 </Field>
-                                <Field label="UPI QR Code URL" icon={<Camera size={15} />}>
-                                    <input className="input-field" value={form.qr_code} onChange={e => setForm({...form, qr_code: e.target.value})} placeholder="Link to QR image" />
+                                <Field label="UPI QR Code (Image)" icon={<Camera size={15} />}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                                        {form.qr_code && (
+                                            <div style={{ width: '50px', height: '50px', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', background: 'white' }}>
+                                                <img src={form.qr_code} alt="QR" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                                            </div>
+                                        )}
+                                        <button 
+                                            type="button" 
+                                            onClick={() => qrInputRef.current?.click()}
+                                            className="nav-btn-outline" 
+                                            style={{ padding: '0.4rem 1rem', fontSize: '0.75rem' }}
+                                        >
+                                            {form.qr_code ? 'Change QR' : 'Upload QR'}
+                                        </button>
+                                        <input 
+                                            ref={qrInputRef}
+                                            type="file" 
+                                            accept="image/*" 
+                                            style={{ display: 'none' }} 
+                                            onChange={handleQrChange} 
+                                        />
+                                    </div>
                                 </Field>
                             </div>
 
