@@ -16,7 +16,7 @@ const InstructorCourseForm = () => {
     const fetchProfile = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/auth/profile', {
+        const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/auth/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -43,7 +43,7 @@ const InstructorCourseForm = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/instructor/courses', {
+      const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

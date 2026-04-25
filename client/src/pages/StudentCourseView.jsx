@@ -59,7 +59,7 @@ const StudentCourseView = () => {
   const fetchCourseDetails = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${courseId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -85,7 +85,7 @@ const StudentCourseView = () => {
   const fetchDoubts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/doubts`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/doubts`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -106,7 +106,7 @@ const StudentCourseView = () => {
     setCompletingId(lessonId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/lessons/${lessonId}/complete`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${lessonId}/complete`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -122,7 +122,7 @@ const StudentCourseView = () => {
     setSubmittingRating(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/rate`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${courseId}/rate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -146,7 +146,7 @@ const StudentCourseView = () => {
     setSubmittingDoubt(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/doubts`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/doubts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -172,7 +172,7 @@ const StudentCourseView = () => {
   const handleStartQuiz = async (lessonId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/lessons/${lessonId}/quizzes`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${lessonId}/quizzes`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -204,7 +204,7 @@ const StudentCourseView = () => {
       }
 
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/lessons/${showQuiz}/quizzes/check`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${showQuiz}/quizzes/check`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -229,7 +229,7 @@ const StudentCourseView = () => {
     setGeneratingPractice(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/ai/practice`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/ai/practice`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

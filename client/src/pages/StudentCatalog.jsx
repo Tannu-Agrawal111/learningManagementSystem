@@ -21,8 +21,8 @@ const StudentCatalog = () => {
     try {
       const token = localStorage.getItem('token');
       const [catalogRes, enrollRes] = await Promise.all([
-        fetch('http://localhost:5000/api/student/courses', { headers: { 'Authorization': `Bearer ${token}` } }),
-        fetch('http://localhost:5000/api/student/enrollments', { headers: { 'Authorization': `Bearer ${token}` } })
+        fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses', { headers: { 'Authorization': `Bearer ${token}` } }),
+        fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/student/enrollments', { headers: { 'Authorization': `Bearer ${token}` } })
       ]);
       if (catalogRes.ok && enrollRes.ok) {
         const catalogData = await catalogRes.json();
@@ -38,7 +38,7 @@ const StudentCatalog = () => {
     setEnrolling(courseId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/enroll`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${courseId}/enroll`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) { navigate(`/student/courses/${courseId}`); }
@@ -175,7 +175,7 @@ const CoursePreviewModal = ({ course, onClose, onEnroll, isEnrolling }) => {
     const fetchDetails = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:5000/api/student/courses/${course.id}/public`, { headers: { 'Authorization': `Bearer ${token}` } });
+        const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${course.id}/public`, { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) setData(await res.json());
       } catch (err) { console.error(err); }
       finally { setLoading(false); }

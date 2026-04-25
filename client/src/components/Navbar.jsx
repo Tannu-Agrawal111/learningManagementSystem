@@ -23,7 +23,7 @@ const Navbar = () => {
     const fetchAvatar = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/auth/profile', {
+        const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/auth/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {

@@ -16,7 +16,7 @@ const Certificate = () => {
     const fetchCourseDetails = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}`, {
+        const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${courseId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const data = await res.json();

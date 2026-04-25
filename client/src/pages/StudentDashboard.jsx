@@ -30,10 +30,10 @@ const StudentDashboard = () => {
     try {
       const token = localStorage.getItem('token');
       const [enrollRes, catalogRes] = await Promise.all([
-        fetch('http://localhost:5000/api/student/enrollments', {
+        fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/student/enrollments', {
           headers: { 'Authorization': `Bearer ${token}` }
         }),
-        fetch('http://localhost:5000/api/student/courses', {
+        fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses', {
           headers: { 'Authorization': `Bearer ${token}` }
         })
       ]);
@@ -46,7 +46,7 @@ const StudentDashboard = () => {
       }
 
       // Fetch activity data
-      const actRes = await fetch('http://localhost:5000/api/student/activity', {
+      const actRes = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/student/activity', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (actRes.ok) setActivityData(await actRes.json());
@@ -67,7 +67,7 @@ const StudentDashboard = () => {
     setUnenrollingId(enrollmentId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/enrollments/${enrollmentId}/delete`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/enrollments/${enrollmentId}/delete`, {
         method: 'POST',
         headers: { 
           'Authorization': `Bearer ${token}`,
@@ -95,7 +95,7 @@ const StudentDashboard = () => {
     setEnrolling(courseId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/enroll`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${courseId}/enroll`, {
         method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) { 

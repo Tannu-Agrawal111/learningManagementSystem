@@ -49,7 +49,7 @@ const InstructorDashboard = () => {
   const fetchCourses = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/instructor/courses', {
+      const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -66,7 +66,7 @@ const InstructorDashboard = () => {
   const fetchActivity = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/instructor/activity', {
+      const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/activity', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -78,7 +78,7 @@ const InstructorDashboard = () => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/auth/profile', {
+      const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/auth/profile', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -99,7 +99,7 @@ const InstructorDashboard = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/instructor/courses/${editingCourse.id}/edit`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses/${editingCourse.id}/edit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +127,7 @@ const InstructorDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this course? This action cannot be undone.')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/instructor/courses/${courseId}`, {
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses/${courseId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
