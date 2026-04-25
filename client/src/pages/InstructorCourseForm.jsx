@@ -7,11 +7,8 @@ import './Instructor.css';
 const InstructorCourseForm = () => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [isPaid, setIsPaid] = useState(false);
-  const [price, setPrice] = useState('');
   const [benefits, setBenefits] = useState(['']);
   const [error, setError] = useState('');
-  const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -37,24 +34,9 @@ const InstructorCourseForm = () => {
     e.preventDefault();
     setError('');
 
-    if (isPaid) {
-      if (!price || parseFloat(price) <= 0) {
-        setError('Please enter a valid price for the paid course.');
-        return;
-      }
-      
-      const hasPaymentDetails = profile?.upi_id || (profile?.bank_account && profile?.ifsc_code);
-      if (!hasPaymentDetails) {
-        setError(
-          <span>
-            Payment details missing! Please add your UPI ID or Bank details in your 
-            <Link to="/profile" style={{ color: 'var(--primary)', textDecoration: 'underline', marginLeft: '4px' }}>
-              profile
-            </Link> before launching a paid course.
-          </span>
-        );
-        return;
-      }
+    if (!title || !description) {
+      setError('Please fill in all required fields');
+      return;
     }
 
     setLoading(true);
@@ -70,8 +52,6 @@ const InstructorCourseForm = () => {
         body: JSON.stringify({ 
           title: title.trim(), 
           description: description.trim(), 
-          is_paid: isPaid ? 1 : 0, 
-          price: isPaid ? parseFloat(price) : 0,
           benefits: benefits.filter(b => b.trim() !== '')
         }),
       });
@@ -184,6 +164,8 @@ const InstructorCourseForm = () => {
           </motion.div>
         )}
         
+
+
         <form onSubmit={handleSubmit}>
           <div className="form-group" style={{ marginBottom: '2rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1rem', fontWeight: '700', marginBottom: '0.75rem' }}>
@@ -214,61 +196,7 @@ const InstructorCourseForm = () => {
             />
           </div>
 
-          <div className="form-group" style={{ marginBottom: '2.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1rem', fontWeight: '700', marginBottom: '1rem' }}>
-              <Sparkles size={18} className="text-secondary" /> Pricing Model
-            </label>
-            <div className="pricing-toggle">
-              <button
-                type="button"
-                onClick={() => setIsPaid(false)}
-                className={`pricing-btn free ${!isPaid ? 'active' : ''}`}
-              >
-                <span style={{ fontSize: '1.5rem' }}>🆓</span>
-                <span style={{ fontWeight: '800' }}>Free Course</span>
-                <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>Maximum accessibility</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsPaid(true)}
-                className={`pricing-btn paid ${isPaid ? 'active' : ''}`}
-              >
-                <span style={{ fontSize: '1.5rem' }}>💰</span>
-                <span style={{ fontWeight: '800' }}>Paid Course</span>
-                <span style={{ fontSize: '0.8rem', opacity: 0.8 }}>Professional value</span>
-              </button>
-            </div>
 
-            <AnimatePresence>
-              {isPaid && (
-                <motion.div 
-                  initial={{ opacity: 0, height: 0 }} 
-                  animate={{ opacity: 1, height: 'auto' }} 
-                  exit={{ opacity: 0, height: 0 }}
-                  style={{ overflow: 'hidden' }}
-                >
-                  <div style={{ padding: '1.5rem', background: 'rgba(99,102,241,0.05)', borderRadius: '16px', border: '1px solid rgba(99,102,241,0.2)' }}>
-                    <label style={{ fontSize: '0.85rem', fontWeight: '700', color: 'var(--text-secondary)', marginBottom: '0.75rem', display: 'block' }}>
-                      Set Course Price (₹ INR)
-                    </label>
-                    <div style={{ position: 'relative' }}>
-                      <span style={{ position: 'absolute', left: '1.25rem', top: '50%', transform: 'translateY(-50%)', fontWeight: '900', color: 'var(--primary)', fontSize: '1.25rem' }}>₹</span>
-                      <input
-                        type="number"
-                        value={price}
-                        onChange={(e) => setPrice(e.target.value)}
-                        placeholder="e.g. 999"
-                        className="input-field"
-                        min="1"
-                        required={isPaid}
-                        style={{ paddingLeft: '2.8rem', fontSize: '1.25rem', fontWeight: '800' }}
-                      />
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
 
           <div className="form-group" style={{ marginBottom: '2.5rem' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1rem', fontWeight: '700', marginBottom: '1rem' }}>
@@ -310,7 +238,7 @@ const InstructorCourseForm = () => {
             disabled={loading} 
             style={{ width: '100%', padding: '1.25rem', fontSize: '1.1rem', fontWeight: '800', display: 'flex', justifyContent: 'center', gap: '0.75rem', marginTop: '1rem' }}
           >
-            {loading ? <><Loader2 className="animate-spin" size={20} /> Creating Course...</> : `Launch ${isPaid ? 'Paid' : 'Free'} Course`}
+            {loading ? <><Loader2 className="animate-spin" size={20} /> Creating Course...</> : `Launch Course`}
           </motion.button>
         </form>
       </motion.div>

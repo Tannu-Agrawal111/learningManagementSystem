@@ -134,14 +134,14 @@ const InstructorCatalog = () => {
             >
               <div style={{ padding: '1.5rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-subtle)', padding: '0.3rem 0.8rem', borderRadius: '100px' }}>
+                  <Link to={`/instructor/profile/${course.instructor_id}`} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-subtle)', padding: '0.3rem 0.8rem', borderRadius: '100px', textDecoration: 'none' }}>
                     <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: 'var(--primary)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: '800' }}>
                         {course.instructor_name?.charAt(0).toUpperCase()}
                     </div>
                     <span style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-secondary)' }}>
                       {course.instructor_name} {course.instructor_id === user.id && "(You)"}
                     </span>
-                  </div>
+                  </Link>
                   <Globe size={18} className="text-muted" />
                 </div>
 
@@ -157,8 +157,8 @@ const InstructorCatalog = () => {
                   <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-subtle)', padding: '0.25rem 0.6rem', borderRadius: '6px' }}>
                     <BookOpen size={14} className="text-secondary" /> {course.total_lessons || 0}
                   </div>
-                  <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-subtle)', padding: '0.25rem 0.6rem', borderRadius: '6px', color: course.is_paid ? 'var(--primary)' : '#10b981', fontWeight: '800' }}>
-                    {course.is_paid ? 'PAID' : 'FREE'}
+                  <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-subtle)', padding: '0.25rem 0.6rem', borderRadius: '6px', color: '#10b981', fontWeight: '800' }}>
+                    FREE
                   </div>
                 </div>
 

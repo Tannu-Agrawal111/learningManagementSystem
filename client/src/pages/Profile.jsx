@@ -23,7 +23,7 @@ const Profile = () => {
 
   const [form, setForm] = useState({ 
     name: '', bio: '', headline: '', location: '', website: '', avatar: '',
-    experience: '', upi_id: '', qr_code: '', bank_account: '', ifsc_code: '' 
+    experience: '' 
   });
   const [pwForm, setPwForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
 
@@ -46,11 +46,7 @@ const Profile = () => {
         location: data.user.location || '',
         website:  data.user.website  || '',
         avatar:   data.user.avatar   || '',
-        experience: data.user.experience || '',
-        upi_id:   data.user.upi_id   || '',
-        qr_code:  data.user.qr_code  || '',
-        bank_account: data.user.bank_account || '',
-        ifsc_code: data.user.ifsc_code || ''
+        experience: data.user.experience || ''
       });
       setAvatarPreview(data.user.avatar || null);
     } catch {
@@ -81,18 +77,7 @@ const Profile = () => {
     reader.readAsDataURL(file);
   };
 
-  const handleQrChange = (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      return showToast('error', 'Image must be smaller than 2 MB.');
-    }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setForm(f => ({ ...f, qr_code: ev.target.result }));
-    };
-    reader.readAsDataURL(file);
-  };
+
 
   const handleSaveProfile = async () => {
     if (!form.name.trim()) return showToast('error', 'Name cannot be empty.');
@@ -419,50 +404,11 @@ const Profile = () => {
 
                       {isInstructor && (
                         <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', padding: '1.5rem', background: 'rgba(99,102,241,0.05)', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.1)' }}>
-                            <h4 style={{ margin: 0, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Briefcase size={18} /> Professional & Payment Details</h4>
+                            <h4 style={{ margin: 0, color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Briefcase size={18} /> Professional Credentials</h4>
                             
                             <Field label="Experience / Credentials" icon={<Award size={15} />}>
                                 <input className="input-field" value={form.experience} onChange={e => setForm({...form, experience: e.target.value})} placeholder="e.g. 10+ years in Web Development" />
                             </Field>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                <Field label="UPI ID" icon={<Globe size={15} />}>
-                                    <input className="input-field" value={form.upi_id} onChange={e => setForm({...form, upi_id: e.target.value})} placeholder="yourname@upi" />
-                                </Field>
-                                <Field label="UPI QR Code (Image)" icon={<Camera size={15} />}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                                        {form.qr_code && (
-                                            <div style={{ width: '50px', height: '50px', border: '1px solid var(--border-color)', borderRadius: '8px', overflow: 'hidden', background: 'white' }}>
-                                                <img src={form.qr_code} alt="QR" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                                            </div>
-                                        )}
-                                        <button 
-                                            type="button" 
-                                            onClick={() => qrInputRef.current?.click()}
-                                            className="nav-btn-outline" 
-                                            style={{ padding: '0.4rem 1rem', fontSize: '0.75rem' }}
-                                        >
-                                            {form.qr_code ? 'Change QR' : 'Upload QR'}
-                                        </button>
-                                        <input 
-                                            ref={qrInputRef}
-                                            type="file" 
-                                            accept="image/*" 
-                                            style={{ display: 'none' }} 
-                                            onChange={handleQrChange} 
-                                        />
-                                    </div>
-                                </Field>
-                            </div>
-
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                                <Field label="Bank Account Number" icon={<Lock size={15} />}>
-                                    <input className="input-field" value={form.bank_account} onChange={e => setForm({...form, bank_account: e.target.value})} placeholder="Account number" />
-                                </Field>
-                                <Field label="IFSC Code" icon={<Globe size={15} />}>
-                                    <input className="input-field" value={form.ifsc_code} onChange={e => setForm({...form, ifsc_code: e.target.value})} placeholder="IFSC Code" />
-                                </Field>
-                            </div>
                         </div>
                       )}
 

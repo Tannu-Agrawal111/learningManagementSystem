@@ -2,9 +2,6 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, AreaChart, Area
-} from 'recharts';
-import { 
   Search, 
   BookOpen, 
   User, 
@@ -12,12 +9,10 @@ import {
   GraduationCap, 
   ArrowRight,
   Loader2,
-  PieChart as PieChartIcon,
   Sparkles,
   Users,
-  LogOut,
   Trash2,
-  CreditCard
+  Plus
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import './Student.css';
@@ -28,8 +23,9 @@ const StudentDashboard = () => {
   const [allCourses, setAllCourses] = useState([]);
   const [loading, setLoading]           = useState(true);
   const [unenrollingId, setUnenrollingId] = useState(null);
+  const [enrolling, setEnrolling] = useState(null);
   const [activityData, setActivityData]   = useState([]);
-
+  
   const fetchData = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -71,7 +67,6 @@ const StudentDashboard = () => {
     setUnenrollingId(enrollmentId);
     try {
       const token = localStorage.getItem('token');
-      // Using POST for maximum compatibility
       const res = await fetch(`http://localhost:5000/api/student/enrollments/${enrollmentId}/delete`, {
         method: 'POST',
         headers: { 
@@ -80,14 +75,12 @@ const StudentDashboard = () => {
         }
       });
       
-      const data = await res.json();
-      
       if (res.ok) {
         alert('Successfully unenrolled!');
-        // Optimistic update
         setEnrollments(prev => prev.filter(e => e.enrollment_id !== enrollmentId));
         fetchData(); 
       } else {
+        const data = await res.json();
         alert(`Unenroll failed: ${data.message || 'Unknown error'}`);
       }
     } catch (err) {
@@ -98,10 +91,23 @@ const StudentDashboard = () => {
     }
   };
 
-  const enrolledIds = enrollments.map(e => e.id);
-  const recommendedCourses = allCourses.filter(c => !enrolledIds.includes(c.id)).slice(0, 6);
+  const handleFreeEnroll = async (courseId) => {
+    setEnrolling(courseId);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/enroll`, {
+        method: 'POST', headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) { 
+          fetchData(); 
+      }
+      else { const d = await res.json(); alert(d.message || 'Failed to enroll'); }
+    } catch { alert('Error occurred'); }
+    finally { setEnrolling(null); }
+  };
 
-  const COLORS = ['#6366F1', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'];
+  const enrolledIds = enrollments.map(e => e.id);
+  const recommendedCourses = allCourses.filter(c => !enrolledIds.includes(c.id));
 
   if (loading) {
     return (
@@ -168,10 +174,10 @@ const StudentDashboard = () => {
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <div className="instructor-name">
+                  <Link to={`/instructor/profile/${course.instructor_id}`} className="instructor-name" style={{ textDecoration: 'none', color: 'inherit' }}>
                     <User size={14} />
                     {course.instructor_name}
-                  </div>
+                  </Link>
                   <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
                     <Users size={14} className="text-primary" /> {course.total_enrolled || 0} students
                   </div>
@@ -205,37 +211,6 @@ const StudentDashboard = () => {
 
       {/* Discovery Section */}
       <div style={{ marginBottom: '3rem' }}>
-        <style>{`
-          .horizontal-scroll-grid {
-            display: flex !important;
-            overflow-x: auto;
-            gap: 2rem;
-            padding: 0.5rem 0.5rem 1.5rem;
-            margin: -0.5rem;
-            scroll-snap-type: x mandatory;
-            scrollbar-width: thin;
-            scrollbar-color: var(--primary-light) transparent;
-          }
-          .horizontal-scroll-grid::-webkit-scrollbar {
-            height: 6px;
-          }
-          .horizontal-scroll-grid::-webkit-scrollbar-track {
-            background: transparent;
-          }
-          .horizontal-scroll-grid::-webkit-scrollbar-thumb {
-            background-color: var(--primary-light);
-            border-radius: 20px;
-          }
-          .horizontal-scroll-grid > div {
-            flex: 0 0 320px;
-            scroll-snap-align: start;
-          }
-          @media (max-width: 480px) {
-            .horizontal-scroll-grid > div {
-              flex: 0 0 280px;
-            }
-          }
-        `}</style>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h2 style={{ fontSize: '1.5rem', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <Sparkles className="text-accent" size={24} /> {enrollments.length === 0 ? "Recommended Courses" : "Expand Your Skills"}
@@ -248,58 +223,60 @@ const StudentDashboard = () => {
             <p style={{ color: 'var(--text-secondary)' }}>You've enrolled in everything we have! Amazing job. 🏆</p>
           </div>
         ) : (
-          <div className="catalog-grid horizontal-scroll-grid">
-            {recommendedCourses.map((course, index) => (
-              <motion.div 
-                key={course.id} 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 + (index * 0.1) }}
-                className="catalog-card glass-panel"
-                whileHover={{ y: -8, boxShadow: 'var(--shadow-xl)' }}
-              >
-                <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-lg)', marginBottom: '1.25rem' }}>
-                  {course.is_paid === 1 && (
-                    <span style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', zIndex: 10, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: 'white', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>
-                      ₹{Number(course.price).toLocaleString('en-IN')}
-                    </span>
-                  )}
-                  {!course.is_paid && (
+          <div className="horizontal-scroll-container" style={{ overflowX: 'auto', paddingBottom: '1.5rem', marginBottom: '-1.5rem' }}>
+            <div className="catalog-grid" style={{ display: 'flex', gap: '2rem', minWidth: 'max-content', paddingRight: '2rem' }}>
+              {recommendedCourses.map((course, index) => (
+                <motion.div 
+                  key={course.id} 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 + (index * 0.1) }}
+                  className="catalog-card glass-panel"
+                  whileHover={{ y: -8, boxShadow: 'var(--shadow-xl)' }}
+                  style={{ width: '350px', flexShrink: 0, height: 'auto', display: 'flex', flexDirection: 'column' }}
+                >
+                  <div style={{ position: 'relative', overflow: 'hidden', borderRadius: 'var(--radius-lg)', marginBottom: '1.25rem' }}>
                     <span style={{ position: 'absolute', top: '0.75rem', right: '0.75rem', zIndex: 10, background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.75rem', fontWeight: '800' }}>
                       FREE
                     </span>
-                  )}
-                  <div style={{ height: '160px', background: course.is_paid ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'linear-gradient(135deg, #F59E0B, #EF4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
-                      {course.is_paid ? <CreditCard size={64} opacity={0.5} /> : <GraduationCap size={64} opacity={0.5} />}
+                    <div style={{ height: '160px', background: 'linear-gradient(135deg, #F59E0B, #EF4444)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
+                         <GraduationCap size={64} opacity={0.5} />
+                    </div>
                   </div>
-                </div>
-                
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                  <div className="instructor-name">
-                    <User size={14} />
-                    {course.instructor_name}
+                  
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <Link to={`/instructor/profile/${course.instructor_id}`} className="instructor-name" style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <User size={14} />
+                      {course.instructor_name}
+                    </Link>
+                    <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                      <Users size={14} className="text-primary" /> {course.total_enrolled || 0}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                    <Users size={14} className="text-primary" /> {course.total_enrolled || 0}
+  
+                  <h3 style={{ fontSize: '1.3rem', marginBottom: '0.75rem' }}>{course.title}</h3>
+                  <p style={{ marginBottom: '2rem', fontSize: '0.95rem', color: 'var(--text-secondary)', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {course.description || "No description provided."}
+                  </p>
+                  
+                  <div style={{ display: 'flex', gap: '0.75rem', marginTop: 'auto' }}>
+                    <Link to={`/student/courses/${course.id}/preview`} style={{textDecoration: 'none', flex: 1}}>
+                      <button className="nav-btn-outline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', border: '1px solid var(--border-color)', padding: '0.8rem' }}>
+                        Preview
+                      </button>
+                    </Link>
+                    <button className="enroll-btn" onClick={() => handleFreeEnroll(course.id)}
+                      disabled={enrolling === course.id}
+                      style={{ flex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                      {enrolling === course.id ? <Loader2 className="animate-spin" size={18} /> : <Plus size={18} />} Enroll Now
+                    </button>
                   </div>
-                </div>
-
-                <h3 style={{ fontSize: '1.3rem', marginBottom: '0.75rem' }}>{course.title}</h3>
-                <p style={{ marginBottom: '2rem', fontSize: '0.95rem', color: 'var(--text-secondary)', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {course.description || "No description provided."}
-                </p>
-                
-                <Link to={`/student/courses/${course.id}/preview`} style={{textDecoration: 'none', marginTop: 'auto'}}>
-                  <button className="enroll-btn" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', width: '100%', background: 'var(--bg-subtle)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', boxShadow: 'none' }}>
-                    View Details
-                  </button>
-                </Link>
-              </motion.div>
-            ))}
+                </motion.div>
+              ))}
+            </div>
           </div>
         )}
       </div>
-
     </div>
   );
 };

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
-const { authMiddleware } = require('../middleware/auth');
+const { authMiddleware, enrollmentMiddleware } = require('../middleware/auth');
 const fs = require('fs');
 const path = require('path');
 
@@ -16,11 +16,11 @@ const logUnenroll = (msg) => {
 router.use(authMiddleware);
 
 // @route GET /api/student/courses
-// @desc  Get all courses with price info and enrollment status
+// @desc  Get all courses with enrollment status
 router.get('/courses', (req, res) => {
   const studentId = req.user.id;
   const query = `
-    SELECT c.id, c.title, c.description, c.is_paid, c.price, c.average_rating, c.total_ratings, u.name as instructor_name,
+    SELECT c.id, c.title, c.description, c.average_rating, c.total_ratings, c.instructor_id, u.name as instructor_name,
     (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as total_enrolled,
     (SELECT COUNT(*) FROM lessons WHERE course_id = c.id) as total_lessons,
     CASE WHEN e.id IS NOT NULL THEN 1 ELSE 0 END as is_enrolled
@@ -39,7 +39,7 @@ router.get('/enrollments', (req, res) => {
   const studentId = req.user.id;
   const query = `
     SELECT 
-      e.id as enrollment_id, c.id, c.title, c.description, c.is_paid, c.price, u.name as instructor_name, e.enrolled_at,
+      e.id as enrollment_id, c.id, c.title, c.description, c.instructor_id, u.name as instructor_name, e.enrolled_at,
       (SELECT COUNT(*) FROM lessons WHERE course_id = c.id) as total_lessons,
       (SELECT COUNT(*) FROM progress p JOIN lessons l ON p.lesson_id = l.id WHERE l.course_id = c.id AND p.student_id = ?) as completed_lessons,
       (SELECT COUNT(*) FROM enrollments WHERE course_id = c.id) as total_enrolled
@@ -47,7 +47,6 @@ router.get('/enrollments', (req, res) => {
     JOIN courses c ON e.course_id = c.id
     JOIN users u ON c.instructor_id = u.id
     WHERE e.student_id = ?
-    AND (c.is_paid = 0 OR EXISTS (SELECT 1 FROM payments WHERE student_id = e.student_id AND course_id = e.course_id AND status = 'paid'))
   `;
   db.all(query, [studentId, studentId], (err, courses) => {
     if (err) return res.status(500).json({ message: 'Database error' });
@@ -118,17 +117,13 @@ router.delete('/enrollments/:enrollmentId', (req, res) => {
 });
 
 // @route POST /api/student/courses/:courseId/enroll
-// @desc  Free enrollment only — paid courses must use /api/payment/verify
+// @desc  Direct enrollment for any course
 router.post('/courses/:courseId/enroll', (req, res) => {
   const { courseId } = req.params;
   const studentId = req.user.id;
 
-  db.get('SELECT * FROM courses WHERE id = ?', [courseId], (err, course) => {
+  db.get('SELECT id FROM courses WHERE id = ?', [courseId], (err, course) => {
     if (err || !course) return res.status(404).json({ message: 'Course not found' });
-
-    if (course.is_paid === 1) {
-      return res.status(403).json({ message: 'Payment required. This is a paid course.' });
-    }
 
     db.run(
       'INSERT OR IGNORE INTO enrollments (student_id, course_id) VALUES (?, ?)',
@@ -143,7 +138,7 @@ router.post('/courses/:courseId/enroll', (req, res) => {
 
 // @route GET /api/student/courses/:courseId
 // @desc  Get full course data (enrolled students only + payment check)
-router.get('/courses/:courseId', (req, res) => {
+router.get('/courses/:courseId', enrollmentMiddleware, (req, res) => {
   const { courseId } = req.params;
   const studentId = req.user.id;
 
@@ -158,25 +153,15 @@ router.get('/courses/:courseId', (req, res) => {
     db.get('SELECT id FROM enrollments WHERE student_id = ? AND course_id = ?', [studentId, courseId], (err, enrollment) => {
       // Access allowed if:
       // 1. User is the owner
-      // 2. User is an instructor and course is FREE
+      // 2. User is an instructor (all free now)
       // 3. User is an enrolled student
-      const hasAccess = isOwner || (isInstructor && isFree) || enrollment;
+      const hasAccess = isOwner || isInstructor || enrollment;
 
       if (!hasAccess) {
         return res.status(403).json({ message: 'Not enrolled' });
       }
 
-      // STRICT PAYMENT CHECK for students in paid courses
-      if (!isInstructor && course.is_paid === 1) {
-        db.get('SELECT status FROM payments WHERE student_id = ? AND course_id = ? AND status = "paid"', [studentId, courseId], (payErr, payment) => {
-          if (payErr || !payment) {
-            return res.status(403).json({ message: 'Access denied. Payment required.' });
-          }
-          fetchFullData();
-        });
-      } else {
-        fetchFullData();
-      }
+      fetchFullData();
 
       function fetchFullData() {
         db.all('SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC', [courseId], (err, lessons) => {
@@ -204,7 +189,7 @@ router.get('/courses/:courseId', (req, res) => {
 });
 
 // @route GET /api/student/courses/:courseId/public
-// @desc  Public view — shows preview lessons for paid, all titles for free
+// @desc  Public view — shows course details and all lesson titles
 router.get('/courses/:courseId/public', (req, res) => {
   const { courseId } = req.params;
   const studentId = req.user.id;
@@ -217,49 +202,13 @@ router.get('/courses/:courseId/public', (req, res) => {
     (err, course) => {
       if (err || !course) return res.status(404).json({ message: 'Course not found' });
 
-      db.all('SELECT * FROM lessons WHERE course_id = ? ORDER BY order_index ASC', [courseId], (err, allLessons) => {
+      db.all('SELECT id, title, type, content, url, resources, order_index FROM lessons WHERE course_id = ? ORDER BY order_index ASC', [courseId], (err, lessons) => {
         if (err) return res.status(500).json({ message: 'Database error' });
-
-        const isInstructor = req.user.role === 'instructor';
-        const isOwner = isInstructor && course.instructor_id === req.user.id;
-        const isFree = course.is_paid === 0;
-
-        if (isFree || isOwner) {
-          // Full access
-          return res.json({
-            course,
-            lessons: allLessons.map(l => ({ ...l, is_preview: 1 })),
-            isPreview: false
-          });
-        }
-
-        // Paid course — compute which lessons are preview
-        const markedPreview = allLessons.filter(l => l.is_preview === 1);
-        const previewCount = Math.max(1, Math.ceil(allLessons.length * 0.1));
-        const autoPreview = allLessons.slice(0, previewCount);
-        
-        const previewLessons = markedPreview.length > 0 ? markedPreview : autoPreview;
-        const previewIds = new Set(previewLessons.map(l => l.id));
-
-        const lessonsForView = allLessons.map(l => {
-          const isP = previewIds.has(l.id);
-          return {
-            id: l.id,
-            title: l.title,
-            type: l.type,
-            order_index: l.order_index,
-            is_preview: isP ? 1 : 0,
-            content: isP ? l.content : null,
-            url: isP ? l.url : null,
-            resources: isP ? l.resources : null,
-          };
-        });
 
         res.json({ 
           course, 
-          lessons: lessonsForView, 
-          isPreview: true, 
-          previewCount: previewLessons.length 
+          lessons, 
+          isPreview: false
         });
       });
     }

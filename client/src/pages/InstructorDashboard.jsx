@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area 
@@ -28,6 +28,7 @@ import './Instructor.css';
 
 const InstructorDashboard = () => {
   const { user } = useContext(AuthContext);
+  const navigate = useNavigate();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activityData, setActivityData] = useState([]);
@@ -37,6 +38,7 @@ const InstructorDashboard = () => {
   const [editBenefits, setEditBenefits] = useState(['']);
   const [profile, setProfile] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     fetchCourses();
@@ -89,13 +91,10 @@ const InstructorDashboard = () => {
   const handleEditCourse = async (e) => {
     e.preventDefault();
     
-    // Check payment details for paid courses
-    if (editingCourse.is_paid === 1) {
-      const hasPayment = profile?.upi_id || (profile?.bank_account && profile?.ifsc_code);
-      if (!hasPayment) {
-        alert('Payment details missing! Please add UPI or Bank details in your profile before updating a paid course.');
-        return;
-      }
+    // Check title and description
+    if (!editTitle || !editDesc) {
+       setError('Please fill in all fields');
+       return;
     }
 
     try {
@@ -109,20 +108,18 @@ const InstructorDashboard = () => {
         body: JSON.stringify({ 
           title: editTitle, 
           description: editDesc, 
-          benefits: editBenefits.filter(b => b.trim() !== ''),
-          is_paid: editingCourse.is_paid,
-          price: editingCourse.price
+          benefits: editBenefits.filter(b => b.trim() !== '')
         }),
       });
+      const data = await res.json();
       if (res.ok) {
         setEditingCourse(null);
         fetchCourses();
       } else {
-        const data = await res.json();
-        alert(data.message || 'Failed to update course');
+        setError(data.message || 'Failed to update course');
       }
     } catch (err) {
-      alert('Failed to update course');
+      setError('An error occurred. Please try again.');
     }
   };
 
@@ -309,9 +306,6 @@ const InstructorDashboard = () => {
                   <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.6rem', borderRadius: '6px' }}>
                     <FileText size={14} className="text-secondary" /> {course.total_lessons || 0}
                   </div>
-                  <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.6rem', borderRadius: '6px', color: course.is_paid ? 'var(--primary)' : '#10b981', fontWeight: '800' }}>
-                    {course.is_paid ? 'PAID' : 'FREE'}
-                  </div>
                   {course.average_rating > 0 && (
                     <div style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.6rem', borderRadius: '6px', color: '#f59e0b', fontWeight: '800' }}>
                       ⭐ {Number(course.average_rating).toFixed(1)}
@@ -337,49 +331,48 @@ const InstructorDashboard = () => {
         </Link>
       </div>
 
-      <div className="courses-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '2rem' }}>
-        {otherCourses.slice(0, 6).map((course, index) => (
-          <motion.div 
-            key={course.id} 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.1 }}
-            className="course-card-premium glass-panel"
-            style={{ opacity: 0.85 }}
-          >
-            <div style={{ padding: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                <span style={{ fontSize: '0.75rem', fontWeight: '700', background: 'var(--bg-subtle)', padding: '0.25rem 0.75rem', borderRadius: '100px', color: 'var(--text-secondary)' }}>
-                  By {course.instructor_name}
-                </span>
-                <Globe size={16} className="text-muted" />
-              </div>
-              <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{course.title}</h3>
-              <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{course.description || "No description provided."}</p>
-              
-              <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                <div style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: course.is_paid ? 'var(--primary)' : '#10b981', fontWeight: '800' }}>
-                  {course.is_paid ? 'PAID' : 'FREE'}
+      <div className="horizontal-scroll-container" style={{ overflowX: 'auto', paddingBottom: '1.5rem', marginBottom: '-1.5rem' }}>
+        <div className="courses-grid" style={{ display: 'flex', gap: '2rem', minWidth: 'max-content', paddingRight: '2rem' }}>
+          {otherCourses.slice(0, 10).map((course, index) => (
+            <motion.div 
+              key={course.id} 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.1 }}
+              className="course-card-premium glass-panel"
+              style={{ opacity: 0.85, width: '340px', flexShrink: 0 }}
+            >
+              <div style={{ padding: '1.5rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '700', background: 'var(--bg-subtle)', padding: '0.25rem 0.75rem', borderRadius: '100px', color: 'var(--text-secondary)' }}>
+                    By {course.instructor_name}
+                  </span>
+                  <Globe size={16} className="text-muted" />
                 </div>
-                {course.average_rating > 0 && (
-                  <div style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: '#f59e0b', fontWeight: '800' }}>
-                    ⭐ {Number(course.average_rating).toFixed(1)}
-                  </div>
-                )}
+                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{course.title}</h3>
+                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{course.description || "No description provided."}</p>
+                
+                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                  {course.average_rating > 0 && (
+                    <div style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: '#f59e0b', fontWeight: '800' }}>
+                      ⭐ {Number(course.average_rating).toFixed(1)}
+                    </div>
+                  )}
+                </div>
+  
+                <Link to={`/student/courses/${course.id}/preview`} className="nav-btn-outline" style={{ width: '100%', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}>
+                  View Details <ExternalLink size={18} />
+                </Link>
               </div>
-
-              <Link to={`/student/courses/${course.id}/preview`} className="nav-btn-outline" style={{ width: '100%', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}>
-                View Details <ExternalLink size={18} />
-              </Link>
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          ))}
+        </div>
       </div>
 
       {/* Edit Course Modal */}
       <AnimatePresence>
         {editingCourse && (
-          <div className="modal-overlay" onClick={() => setEditingCourse(null)}>
+          <div className="modal-overlay" onClick={() => { setEditingCourse(null); setError(''); }}>
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
@@ -390,8 +383,15 @@ const InstructorDashboard = () => {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h3 style={{ fontSize: '1.5rem' }}>Edit Course Details</h3>
-                <button onClick={() => setEditingCourse(null)} className="close-btn"><X size={24} /></button>
+                <button onClick={() => { setEditingCourse(null); setError(''); }} className="close-btn"><X size={24} /></button>
               </div>
+              
+              {error && (
+                <div style={{ color: '#ef4444', fontSize: '0.85rem', marginBottom: '1.5rem', padding: '1rem', background: '#fef2f2', borderRadius: '10px', border: '1px solid #fee2e2', fontWeight: '600' }}>
+                  {error}
+                </div>
+              )}
+
               <form onSubmit={handleEditCourse}>
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600' }}>Course Title</label>

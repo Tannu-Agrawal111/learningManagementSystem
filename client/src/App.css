@@ -43,3 +43,28 @@
     color: var(--text-secondary);
     font-size: 1.1rem;
   }
+  
+  /* Custom Scrollbar for Horizontal Feeds */
+  .horizontal-scroll-container::-webkit-scrollbar {
+    height: 8px;
+  }
+  
+  .horizontal-scroll-container::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
+  }
+  
+  .horizontal-scroll-container::-webkit-scrollbar-thumb {
+    background: var(--primary-light);
+    border-radius: 10px;
+    opacity: 0.5;
+  }
+  
+  .horizontal-scroll-container::-webkit-scrollbar-thumb:hover {
+    background: var(--primary);
+  }
+  
+  .horizontal-scroll-container {
+    scrollbar-width: thin;
+    scrollbar-color: var(--primary-light) rgba(0, 0, 0, 0.05);
+  }

@@ -201,9 +201,19 @@ router.put('/profile', authMiddleware, async (req, res) => {
         WHERE id=?
       `;
       const params = [
-        name.trim(), bio || '', headline || '', location || '', website || '', 
-        avatarValue || '', experience || '', upi_id || '', qr_code || '', 
-        bank_account || '', ifsc_code || '', hashedPassword, userId
+        name !== undefined ? name.trim() : user.name,
+        bio !== undefined ? bio : user.bio,
+        headline !== undefined ? headline : user.headline,
+        location !== undefined ? location : user.location,
+        website !== undefined ? website : user.website,
+        avatarValue !== undefined ? avatarValue : user.avatar,
+        experience !== undefined ? experience : user.experience,
+        upi_id !== undefined ? upi_id : user.upi_id,
+        qr_code !== undefined ? qr_code : user.qr_code,
+        bank_account !== undefined ? bank_account : user.bank_account,
+        ifsc_code !== undefined ? ifsc_code : user.ifsc_code,
+        hashedPassword,
+        userId
       ];
 
       db.run(query, params, (err) => {

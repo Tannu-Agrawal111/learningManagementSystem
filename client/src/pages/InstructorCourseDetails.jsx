@@ -51,7 +51,6 @@ const InstructorCourseDetails = () => {
   const [content, setContent] = useState('');
   const [lessonType, setLessonType] = useState('text');
   const [lessonUrl, setLessonUrl] = useState('');
-  const [isPreview, setIsPreview] = useState(false);
   const [error, setError] = useState('');
 
   // Quiz state
@@ -177,8 +176,7 @@ const InstructorCourseDetails = () => {
           type: lessonType, 
           url: lessonUrl.trim(), 
           order_index,
-          resources: JSON.stringify(lessonResources),
-          is_preview: isPreview ? 1 : 0
+          resources: JSON.stringify(lessonResources)
         }),
       });
 
@@ -191,7 +189,6 @@ const InstructorCourseDetails = () => {
         setLessonType('text');
         setLessonUrl('');
         setLessonResources([]); // Reset resources after save
-        setIsPreview(false);
       } else {
         const data = await res.json();
         setError(data.message || 'Failed to save lesson');
@@ -220,7 +217,6 @@ const InstructorCourseDetails = () => {
     setLessonType('text');
     setLessonUrl('');
     setLessonResources([]);
-    setIsPreview(false);
     setShowForm(true);
     setEditorTab('edit');
   };
@@ -232,36 +228,22 @@ const InstructorCourseDetails = () => {
     setLessonType(lesson.type);
     setLessonUrl(lesson.url || '');
     
-    // Safety check for resources
     let parsedResources = [];
     try {
         if (lesson.resources) {
-            parsedResources = typeof lesson.resources === 'string' ? JSON.parse(lesson.resources) : lesson.resources;
+            parsedResources = typeof lesson.resources === 'string' ? JSON.parse(lesson.resources || '[]') : lesson.resources;
         }
     } catch (e) {
         console.error("Error parsing resources", e);
+        parsedResources = [];
     }
     setLessonResources(Array.isArray(parsedResources) ? parsedResources : []);
-    setIsPreview(lesson.is_preview === 1);
     
     setShowForm(true);
     setEditorTab('edit');
   };
 
-  const handleTogglePreview = async (lessonId, currentPreview) => {
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/instructor/lessons/${lessonId}/preview`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ is_preview: currentPreview === 1 ? 0 : 1 }),
-      });
-      if (res.ok) fetchLessons();
-    } catch (err) { alert('Failed to update preview status'); }
-  };
+
 
   const insertFormatting = (tag) => {
     const textarea = document.getElementById('lesson-content-textarea');
@@ -452,7 +434,7 @@ const InstructorCourseDetails = () => {
         </Link>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
             <button 
-                onClick={() => navigate(`/student/courses/${courseId}`)}
+                onClick={() => navigate(`/student/courses/${courseId}/preview`)}
                 className="nav-btn-outline" 
                 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
             >
@@ -538,22 +520,7 @@ const InstructorCourseDetails = () => {
                     </div>
                   </div>
 
-                  {course?.is_paid === 1 && (
-                    <div className="form-group" style={{ marginBottom: '1.5rem' }}>
-                        <label className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', background: 'var(--bg-subtle)', padding: '0.75rem 1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                            <input 
-                                type="checkbox" 
-                                checked={isPreview} 
-                                onChange={(e) => setIsPreview(e.target.checked)} 
-                                style={{ width: '18px', height: '18px', cursor: 'pointer' }}
-                            />
-                            <div>
-                                <div style={{ fontWeight: '700', fontSize: '0.9rem' }}>Enable Free Preview</div>
-                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Students can view this lesson for free before purchasing the course.</div>
-                            </div>
-                        </label>
-                    </div>
-                  )}
+
                   {(lessonType !== 'text' && lessonType !== 'test') && (
                     <div className="form-group">
                         <label>Resource URL</label>
@@ -647,9 +614,6 @@ const InstructorCourseDetails = () => {
                             {getIconForType(lesson.type)}
                             {lesson.title}
                             <span style={{ fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', background: 'var(--bg-subtle)', color: 'var(--text-muted)', textTransform: 'uppercase' }}>{lesson.type}</span>
-                            {lesson.is_preview === 1 && (
-                                <span style={{ fontSize: '0.65rem', background: '#dcfce7', color: '#16a34a', padding: '0.15rem 0.5rem', borderRadius: '10px', fontWeight: '800' }}>FREE PREVIEW</span>
-                            )}
                         </div>
                     </div>
                     </div>
@@ -658,22 +622,7 @@ const InstructorCourseDetails = () => {
                         <button onClick={() => openQuizManager(lesson.id)} className="action-btn" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
                             <HelpCircle size={14} /> Quizzes
                         </button>
-                        {course?.is_paid === 1 && (
-                            <button 
-                                onClick={() => handleTogglePreview(lesson.id, lesson.is_preview)} 
-                                className={`action-btn ${lesson.is_preview ? 'active' : ''}`} 
-                                style={{ 
-                                    fontSize: '0.8rem', 
-                                    padding: '0.4rem 0.8rem', 
-                                    background: lesson.is_preview ? '#dcfce7' : 'var(--bg-subtle)',
-                                    color: lesson.is_preview ? '#16a34a' : 'var(--text-muted)',
-                                    border: lesson.is_preview ? '1px solid #16a34a' : '1px solid var(--border-color)'
-                                }}
-                                title={lesson.is_preview ? "Disable Preview" : "Enable Preview"}
-                            >
-                                <Zap size={14} /> {lesson.is_preview ? 'Unlocked' : 'Locked'}
-                            </button>
-                        )}
+
                         <button onClick={() => handleEditClick(lesson)} className="icon-btn-muted"><Edit size={16} /></button>
                         <button onClick={() => handleDeleteLesson(lesson.id)} className="icon-btn-muted"><Trash2 size={16} color="#EF4444" /></button>
                     </div>
@@ -709,10 +658,9 @@ const InstructorCourseDetails = () => {
                                     </div>
                                 )}
 
-                                {/* Resources visible for all types */}
                                 {(() => {
                                     let res = [];
-                                    try { res = typeof lesson.resources === 'string' ? JSON.parse(lesson.resources) : (lesson.resources || []); } catch(e) { res = []; }
+                                    try { res = typeof lesson.resources === 'string' ? JSON.parse(lesson.resources || '[]') : (lesson.resources || []); } catch(e) { res = []; }
                                     if (!Array.isArray(res) || res.length === 0) return null;
                                     return (
                                         <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px dashed var(--border-color)' }}>

@@ -175,14 +175,14 @@ const UserProfileView = () => {
                     {courses.map((course, idx) => (
                     <motion.div key={course.id} initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 + (idx * 0.1) }}
                         className="catalog-card glass-panel" whileHover={{ y: -8 }}>
-                        <div style={{ height: '160px', background: course.is_paid ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '12px', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', position: 'relative' }}>
+                        <div style={{ height: '160px', background: 'linear-gradient(135deg, #10b981, #3b82f6)', borderRadius: '12px', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', position: 'relative' }}>
                             <BookOpen size={56} opacity={0.3} />
                         </div>
                         <h3 style={{ fontSize: '1.2rem', marginBottom: '0.75rem', fontWeight: '800' }}>{course.title}</h3>
                         <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1.5rem', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{course.description}</p>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1.25rem', borderTop: '1px solid var(--border-color)' }}>
-                            <span style={{ fontWeight: '900', fontSize: '1.2rem', color: course.is_paid ? 'var(--primary)' : '#10b981' }}>
-                                {course.is_paid ? `₹${Number(course.price).toLocaleString('en-IN')}` : 'FREE'}
+                            <span style={{ fontWeight: '900', fontSize: '1.2rem', color: '#10b981' }}>
+                                FREE
                             </span>
                             <Link to={`/student/courses/${course.id}/preview`} className="enroll-btn" style={{ fontSize: '0.85rem', padding: '0.6rem 1.2rem', boxShadow: 'none', width: 'auto' }}>View Details</Link>
                         </div>

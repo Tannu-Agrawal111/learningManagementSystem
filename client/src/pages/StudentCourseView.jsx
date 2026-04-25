@@ -324,11 +324,13 @@ const StudentCourseView = () => {
     let resources = [];
     try {
         if (activeLesson.resources) {
-            resources = typeof activeLesson.resources === 'string' ? JSON.parse(activeLesson.resources) : activeLesson.resources;
+            resources = typeof activeLesson.resources === 'string' ? JSON.parse(activeLesson.resources || '[]') : activeLesson.resources;
         }
     } catch (e) {
         console.error("Resource parse error", e);
+        resources = [];
     }
+    if (!Array.isArray(resources)) resources = [];
     
     return (
       <div className="lesson-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -511,15 +513,23 @@ const StudentCourseView = () => {
                         <div>
                             <div style={{ fontSize: '0.8rem', fontWeight: '700', color: 'var(--text-muted)' }}>Lesson {idx + 1}</div>
                             <div style={{ fontWeight: '600', fontSize: '0.95rem' }}>{lesson.title}</div>
-                            {lesson.resources && JSON.parse(lesson.resources).length > 0 && (
-                                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.25rem' }}>
-                                    {JSON.parse(lesson.resources).map((r, i) => (
-                                        <span key={i} title={r.title} style={{ fontSize: '0.6rem', background: 'var(--bg-subtle)', color: 'var(--text-muted)', padding: '0.1rem 0.3rem', borderRadius: '3px', border: '1px solid var(--border-color)' }}>
-                                            {r.type === 'video' ? '📺' : (r.type === 'pdf' ? '📄' : '📎')}
-                                        </span>
-                                    ))}
-                                </div>
-                            )}
+                            {(() => {
+                                try {
+                                    const resList = JSON.parse(lesson.resources || '[]');
+                                    if (Array.isArray(resList) && resList.length > 0) {
+                                        return (
+                                            <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.25rem' }}>
+                                                {resList.map((r, i) => (
+                                                    <span key={i} title={r.title} style={{ fontSize: '0.6rem', background: 'var(--bg-subtle)', color: 'var(--text-muted)', padding: '0.1rem 0.3rem', borderRadius: '3px', border: '1px solid var(--border-color)' }}>
+                                                        {r.type === 'video' ? '📺' : (r.type === 'pdf' ? '📄' : '📎')}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        );
+                                    }
+                                } catch(e) {}
+                                return null;
+                            })()}
                         </div>
                     </div>
                 ))}

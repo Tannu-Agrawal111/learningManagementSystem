@@ -20,7 +20,7 @@ router.get('/public/:instructorId', (req, res) => {
         `;
         
         db.get(statsQuery, [instructorId, instructorId], (err, stats) => {
-            db.all('SELECT id, title, description, price, is_paid, average_rating, total_ratings FROM courses WHERE instructor_id = ?', [instructorId], (err, courses) => {
+            db.all('SELECT id, title, description, average_rating, total_ratings FROM courses WHERE instructor_id = ?', [instructorId], (err, courses) => {
                 res.json({ instructor: { ...instructor, ...stats }, courses });
             });
         });
@@ -51,64 +51,40 @@ router.get('/courses', (req, res) => {
 // @route POST /api/instructor/courses
 // @desc Create a new course
 router.post('/courses', (req, res) => {
-  const { title, description, is_paid, price, benefits } = req.body;
+  const { title, description, benefits } = req.body;
   const instructorId = req.user.id;
 
   if (!title) return res.status(400).json({ message: 'Course title is required' });
 
-  const isPaid = is_paid ? 1 : 0;
-  const coursePrice = isPaid ? (parseFloat(price) || 0) : 0;
   const courseBenefits = Array.isArray(benefits) ? JSON.stringify(benefits) : '[]';
 
-  // Task 2: Validate instructor payment details for paid courses
-  db.get('SELECT upi_id, bank_account, ifsc_code FROM users WHERE id = ?', [instructorId], (err, user) => {
-    const hasUpi = !!user?.upi_id;
-    const hasBank = !!(user?.bank_account && user?.ifsc_code);
-    
-    if (isPaid && !hasUpi && !hasBank) {
-      return res.status(400).json({ message: 'Add payment details before creating a paid course' });
+  db.run(
+    'INSERT INTO courses (instructor_id, title, description, is_paid, price, benefits) VALUES (?, ?, ?, ?, ?, ?)',
+    [instructorId, title, description, 0, 0, courseBenefits],
+    function (err) {
+      if (err) return res.status(500).json({ message: 'Failed to create course' });
+      res.json({ id: this.lastID, instructor_id: instructorId, title, description, is_paid: 0, price: 0, benefits: courseBenefits });
     }
-
-    db.run(
-      'INSERT INTO courses (instructor_id, title, description, is_paid, price, benefits) VALUES (?, ?, ?, ?, ?, ?)',
-      [instructorId, title, description, isPaid, coursePrice, courseBenefits],
-      function (err) {
-        if (err) return res.status(500).json({ message: 'Failed to create course' });
-        res.json({ id: this.lastID, instructor_id: instructorId, title, description, is_paid: isPaid, price: coursePrice, benefits: courseBenefits });
-      }
-    );
-  });
+  );
 });
 
 // @route POST /api/instructor/courses/:courseId/edit
 // @desc Update a course (Edit)
 router.post('/courses/:courseId/edit', (req, res) => {
   const { courseId } = req.params;
-  const { title, description, is_paid, price, benefits } = req.body;
+  const { title, description, benefits } = req.body;
   const instructorId = req.user.id;
 
-  const isPaid = is_paid ? 1 : 0;
-  const coursePrice = isPaid ? (parseFloat(price) || 0) : 0;
   const courseBenefits = Array.isArray(benefits) ? JSON.stringify(benefits) : '[]';
 
-  // Task 2: Validate instructor payment details for paid courses
-  db.get('SELECT upi_id, bank_account, ifsc_code FROM users WHERE id = ?', [instructorId], (err, user) => {
-    const hasUpi = !!user?.upi_id;
-    const hasBank = !!(user?.bank_account && user?.ifsc_code);
-    
-    if (isPaid && !hasUpi && !hasBank) {
-      return res.status(400).json({ message: 'Add payment details before publishing a paid course' });
+  db.run(
+    'UPDATE courses SET title = ?, description = ?, benefits = ? WHERE id = ? AND instructor_id = ?',
+    [title, description, courseBenefits, courseId, instructorId],
+    function (err) {
+      if (err) return res.status(500).json({ message: 'Failed to update course' });
+      res.json({ message: 'Course updated successfully' });
     }
-
-    db.run(
-      'UPDATE courses SET title = ?, description = ?, is_paid = ?, price = ?, benefits = ? WHERE id = ? AND instructor_id = ?',
-      [title, description, isPaid, coursePrice, courseBenefits, courseId, instructorId],
-      function(err) {
-        if (err) return res.status(500).json({ message: 'Failed to update course' });
-        res.json({ message: 'Course updated successfully' });
-      }
-    );
-  });
+  );
 });
 
 // @route GET /api/instructor/courses/:courseId/lessons
@@ -278,14 +254,9 @@ router.delete('/courses/:courseId', (req, res) => {
     const { courseId } = req.params;
     const instructorId = req.user.id;
 
-    db.get('SELECT is_paid, (SELECT COUNT(*) FROM enrollments WHERE course_id = ?) as student_count FROM courses WHERE id = ? AND instructor_id = ?', [courseId, courseId, instructorId], (err, row) => {
+    db.get('SELECT id FROM courses WHERE id = ? AND instructor_id = ?', [courseId, instructorId], (err, row) => {
         if (err || !row) return res.status(404).json({ message: 'Course not found' });
 
-        if (row.is_paid === 1 && row.student_count > 0) {
-            return res.status(400).json({ message: 'Cannot delete a paid course with active enrollments.' });
-        }
-
-        // Proceed with deletion
         db.serialize(() => {
             db.run('DELETE FROM lessons WHERE course_id = ?', [courseId]);
             db.run('DELETE FROM enrollments WHERE course_id = ?', [courseId]);

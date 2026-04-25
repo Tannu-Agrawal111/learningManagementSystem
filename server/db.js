@@ -19,7 +19,9 @@ function initDb() {
       name TEXT NOT NULL,
       email TEXT UNIQUE NOT NULL,
       password TEXT NOT NULL,
-      role TEXT CHECK( role IN ('instructor', 'student') ) NOT NULL DEFAULT 'student'
+      role TEXT CHECK( role IN ('instructor', 'student', 'admin') ) NOT NULL DEFAULT 'student',
+      kyc_status TEXT CHECK( kyc_status IN ('none', 'pending', 'verified', 'rejected') ) DEFAULT 'none',
+      kyc_remarks TEXT
     )`);
 
     // Courses table
@@ -109,20 +111,6 @@ function initDb() {
       FOREIGN KEY (lesson_id) REFERENCES lessons (id)
     )`);
 
-    // Payments table
-    db.run(`CREATE TABLE IF NOT EXISTS payments (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      student_id INTEGER NOT NULL,
-      course_id INTEGER NOT NULL,
-      razorpay_order_id TEXT,
-      razorpay_payment_id TEXT,
-      amount REAL NOT NULL,
-      status TEXT CHECK( status IN ('pending', 'paid', 'failed') ) DEFAULT 'pending',
-      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (student_id) REFERENCES users (id),
-      FOREIGN KEY (course_id) REFERENCES courses (id)
-    )`);
-
     // Run migrations for existing databases
     runMigrations();
 
@@ -151,11 +139,10 @@ function runMigrations() {
     db.run(`ALTER TABLE users ADD COLUMN avatar TEXT`, (err) => {});
     db.run(`ALTER TABLE users ADD COLUMN location TEXT`, (err) => {});
     db.run(`ALTER TABLE users ADD COLUMN website TEXT`, (err) => {});
-    db.run(`ALTER TABLE users ADD COLUMN upi_id TEXT`, (err) => {});
-    db.run(`ALTER TABLE users ADD COLUMN qr_code TEXT`, (err) => {});
-    db.run(`ALTER TABLE users ADD COLUMN bank_account TEXT`, (err) => {});
-    db.run(`ALTER TABLE users ADD COLUMN ifsc_code TEXT`, (err) => {});
     db.run(`ALTER TABLE users ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP`, (err) => {});
+
+    // Enrollment migration
+    db.run(`ALTER TABLE enrollments ADD COLUMN status TEXT CHECK( status IN ('active', 'revoked') ) DEFAULT 'active'`, (err) => {});
   });
 }
 

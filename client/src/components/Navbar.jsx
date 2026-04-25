@@ -55,6 +55,16 @@ const Navbar = () => {
         <div className="navbar-menu">
           {user ? (
             <>
+              {user.role === 'student' && (
+                <>
+                  <Link to="/dashboard" className="nav-link">Dashboard</Link>
+                </>
+              )}
+              {user.role === 'instructor' && (
+                <>
+                  <Link to="/instructor/dashboard" className="nav-link">Dashboard</Link>
+                </>
+              )}
               <Link to="/profile" className="user-profile" style={{ textDecoration: 'none' }}
                 title="View / Edit Profile">
                 <div className="avatar" style={{ overflow: 'hidden', padding: 0 }}>
