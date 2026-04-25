@@ -252,10 +252,26 @@ router.post('/lessons/:lessonId/quizzes/check', (req, res) => {
 router.post('/doubts', (req, res) => {
   const { courseId, lessonId, question } = req.body;
   const studentId = req.user.id;
-  db.run('INSERT INTO doubts (student_id, course_id, lesson_id, question) VALUES (?, ?, ?, ?)', [studentId, courseId, lessonId, question], (err) => {
-    if (err) return res.status(500).json({ message: 'Failed' });
-    res.json({ message: 'Success' });
-  });
+
+  const insertDoubt = () => {
+    db.run(
+      'INSERT INTO doubts (course_id, lesson_id, student_id, question) VALUES (?, ?, ?, ?)',
+      [courseId, lessonId || null, studentId, question],
+      function (err) {
+        if (err) return res.status(500).json({ message: 'Failed to submit doubt' });
+        res.json({ message: 'Doubt submitted successfully', id: this.lastID });
+      }
+    );
+  };
+
+  if (req.user.role === 'student') {
+    db.get('SELECT id FROM enrollments WHERE student_id = ? AND course_id = ?', [studentId, courseId], (err, row) => {
+      if (!row) return res.status(403).json({ message: 'Must be enrolled to ask a doubt' });
+      insertDoubt();
+    });
+  } else {
+    insertDoubt();
+  }
 });
 
 // @route GET /api/student/doubts
@@ -365,6 +381,44 @@ router.get('/activity', (req, res) => {
     if (err) return res.status(500).json({ message: 'Database error' });
     res.json(rows);
   });
+});
+
+// @route GET /api/student/lessons/:lessonId/chats
+router.get('/lessons/:lessonId/chats', (req, res) => {
+  const { lessonId } = req.params;
+  db.all('SELECT c.*, u.name as user_name FROM chats c JOIN users u ON c.user_id = u.id WHERE c.lesson_id = ? ORDER BY c.created_at ASC', [lessonId], (err, rows) => {
+    if (err) return res.status(500).json({ message: 'Error fetching chats' });
+    res.json(rows);
+  });
+});
+
+// @route POST /api/student/lessons/:lessonId/chats
+router.post('/lessons/:lessonId/chats', (req, res) => {
+  const { lessonId } = req.params;
+  const { message } = req.body;
+  const userId = req.user.id;
+
+  const insertChat = () => {
+    db.run('INSERT INTO chats (lesson_id, user_id, message) VALUES (?, ?, ?)', [lessonId, userId, message], function(err) {
+      if (err) return res.status(500).json({ message: 'Error sending message' });
+      db.get('SELECT c.*, u.name as user_name FROM chats c JOIN users u ON c.user_id = u.id WHERE c.id = ?', [this.lastID], (err, row) => {
+        res.json(row);
+      });
+    });
+  };
+
+  if (req.user.role === 'student') {
+    db.get('SELECT course_id FROM lessons WHERE id = ?', [lessonId], (err, lesson) => {
+      if (!lesson) return res.status(404).json({ message: 'Lesson not found' });
+      db.get('SELECT id FROM enrollments WHERE student_id = ? AND course_id = ?', [userId, lesson.course_id], (err, row) => {
+        if (!row) return res.status(403).json({ message: 'Must be enrolled to chat' });
+        insertChat();
+      });
+    });
+  } else {
+    // Instructors can chat anywhere
+    insertChat();
+  }
 });
 
 module.exports = router;

@@ -60,6 +60,12 @@ const InstructorCourseDetails = () => {
   const [newQuiz, setNewQuiz] = useState({ question: '', options: ['', '', '', ''], correct_answer: '' });
   const [generatingAI, setGeneratingAI] = useState(false);
 
+  // Chat state
+  const [showChatManager, setShowChatManager] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+
   // Analytics, Doubts, Students
   const [analytics, setAnalytics] = useState([]);
   const [doubts, setDoubts] = useState([]);
@@ -298,6 +304,59 @@ const InstructorCourseDetails = () => {
     } catch (err) { console.error(err); }
   };
 
+  const openChatManager = async (lessonId) => {
+    setActiveLessonId(lessonId);
+    setShowChatManager(true);
+    fetchChats(lessonId);
+  };
+
+  const fetchChats = async (lessonId) => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${lessonId || activeLessonId}/chats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setChatMessages(data);
+      }
+    } catch (err) { console.error(err); }
+  };
+
+  // Poll chats if open
+  useEffect(() => {
+    let interval;
+    if (showChatManager && activeLessonId) {
+        interval = setInterval(() => fetchChats(activeLessonId), 3000);
+    }
+    return () => clearInterval(interval);
+  }, [showChatManager, activeLessonId]);
+
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || !activeLessonId) return;
+    setSendingChat(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${activeLessonId}/chats`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: chatInput })
+      });
+      if (res.ok) {
+        const newMsg = await res.json();
+        setChatMessages([...chatMessages, newMsg]);
+        setChatInput('');
+      }
+    } catch (err) {
+      console.error('Failed to send chat');
+    } finally {
+      setSendingChat(false);
+    }
+  };
+
   const handleAddQuiz = async (e) => {
     e.preventDefault();
     if (!newQuiz.correct_answer) return alert('Select a correct answer');
@@ -514,17 +573,15 @@ const InstructorCourseDetails = () => {
                         <select value={lessonType} onChange={e => setLessonType(e.target.value)} className="input-field">
                             <option value="text">📖 Text/Article</option>
                             <option value="video">🎥 Video</option>
-                            <option value="pdf">📄 PDF</option>
-                            <option value="test">📝 Test</option>
                         </select>
                     </div>
                   </div>
 
 
-                  {(lessonType !== 'text' && lessonType !== 'test') && (
+                  {lessonType === 'video' && (
                     <div className="form-group">
-                        <label>Resource URL</label>
-                        <input type="text" className="input-field" placeholder="Enter link..." value={lessonUrl} onChange={e => setLessonUrl(e.target.value)} required />
+                        <label>Video URL</label>
+                        <input type="text" className="input-field" placeholder="Enter YouTube or Video link..." value={lessonUrl} onChange={e => setLessonUrl(e.target.value)} required />
                     </div>
                   )}
                   <div className="form-group">
@@ -619,6 +676,9 @@ const InstructorCourseDetails = () => {
                     </div>
                     {isOwner && (
                     <div style={{ display: 'flex', gap: '0.75rem' }} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => openChatManager(lesson.id)} className="action-btn" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
+                            <MessageSquare size={14} /> Chats
+                        </button>
                         <button onClick={() => openQuizManager(lesson.id)} className="action-btn" style={{ fontSize: '0.8rem', padding: '0.4rem 0.8rem' }}>
                             <HelpCircle size={14} /> Quizzes
                         </button>
@@ -849,6 +909,58 @@ const InstructorCourseDetails = () => {
                     </div>
                   ))}
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Chat Manager Modal */}
+      <AnimatePresence>
+        {showChatManager && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-overlay" onClick={() => setShowChatManager(false)}>
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="modal-content glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%', padding: '2rem', display: 'flex', flexDirection: 'column', height: '80vh' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
+                <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0 }}>
+                    <MessageSquare className="text-primary" /> Lesson Live Chat
+                </h2>
+                <button onClick={() => setShowChatManager(false)} className="close-btn"><X size={24} /></button>
+              </div>
+
+              <div style={{ flexGrow: 1, overflowY: 'auto', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: '0.5rem' }}>
+                  {chatMessages.length === 0 ? (
+                      <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '2rem' }}>
+                          <MessageSquare size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+                          <p>No messages yet.</p>
+                      </div>
+                  ) : (
+                      chatMessages.map(msg => (
+                          <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem', paddingLeft: '0.5rem' }}>
+                                  <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{msg.user_name}</span> • {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </div>
+                              <div style={{ background: 'var(--bg-subtle)', padding: '0.75rem 1rem', borderRadius: '12px', borderTopLeftRadius: '2px', fontSize: '0.95rem' }}>
+                                  {msg.message}
+                              </div>
+                          </div>
+                      ))
+                  )}
+              </div>
+
+              <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                  <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <input 
+                          className="input-field" 
+                          placeholder="Type your message as instructor..." 
+                          value={chatInput}
+                          onChange={e => setChatInput(e.target.value)}
+                          onKeyDown={e => e.key === 'Enter' && handleSendChat()}
+                          style={{ flexGrow: 1 }}
+                      />
+                      <button className="btn-primary" onClick={handleSendChat} disabled={sendingChat || !chatInput.trim()} style={{ padding: '0 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                          {sendingChat ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                      </button>
+                  </div>
               </div>
             </motion.div>
           </motion.div>

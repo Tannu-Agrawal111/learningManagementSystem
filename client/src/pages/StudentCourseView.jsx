@@ -17,6 +17,8 @@ import {
   Mic,
   Download,
   MessageCircle,
+  MessageSquare,
+  Users,
   Send,
   DownloadCloud,
   Sparkles,
@@ -55,6 +57,71 @@ const StudentCourseView = () => {
   // AI Practice state
   const [isPractice, setIsPractice] = useState(false);
   const [generatingPractice, setGeneratingPractice] = useState(false);
+  
+  const [activeTab, setActiveTab] = useState('overview');
+
+  // Chat state
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState([]);
+  const [chatInput, setChatInput] = useState('');
+  const [sendingChat, setSendingChat] = useState(false);
+
+  useEffect(() => {
+    if (activeLesson) {
+        setActiveTab('overview');
+        fetchChats();
+    }
+  }, [activeLesson]);
+
+  const fetchChats = async () => {
+    if (!activeLesson?.id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${activeLesson.id}/chats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setChatMessages(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch chats');
+    }
+  };
+
+  // Add polling for real-time chat
+  useEffect(() => {
+    let interval;
+    if (showChat && activeLesson?.id) {
+        interval = setInterval(fetchChats, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [showChat, activeLesson]);
+
+  const handleSendChat = async () => {
+    if (!chatInput.trim() || !activeLesson?.id) return;
+    setSendingChat(true);
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${activeLesson.id}/chats`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ message: chatInput })
+      });
+      if (res.ok) {
+        const newMsg = await res.json();
+        setChatMessages([...chatMessages, newMsg]);
+        setChatInput('');
+      }
+    } catch (err) {
+      console.error('Failed to send chat');
+    } finally {
+      setSendingChat(false);
+    }
+  };
 
   const fetchCourseDetails = async () => {
     try {
@@ -265,7 +332,7 @@ const StudentCourseView = () => {
     } else if (url.includes('embed/')) {
       videoId = url.split('embed/')[1]?.split('?')[0];
     }
-    return videoId ? `https://www.youtube.com/embed/${videoId}` : url;
+    return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1` : url;
   };
 
   const renderRichText = (text) => {
@@ -332,28 +399,61 @@ const StudentCourseView = () => {
     }
     if (!Array.isArray(resources)) resources = [];
     
-    return (
-      <div className="lesson-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        <div className="main-lesson-body" style={{ height: 'calc(100vh - 280px)', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {/* Text Content - Rich Format - SCROLLABLE */}
-            <div 
-              className="glass-panel rich-content-container scroll-hide" 
-              style={{ 
-                padding: '2.5rem', 
-                background: 'white', 
-                flexGrow: 1, 
-                maxHeight: '600px', 
-                overflowY: 'auto', 
-                borderRadius: '16px', 
-                border: '1px solid var(--border-color)',
-                boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.02)'
-              }}
-            >
-              {renderRichText(activeLesson.content)}
-            </div>
+    const hasVideo = activeLesson.url && (activeLesson.type === 'video' || activeLesson.url.includes('youtu'));
 
-            {/* Resources Section - NOW STICKY/BOTTOM */}
-            {(resources.length > 0 || activeLesson.url) && (
+    return (
+      <div className="lesson-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        
+        {/* VIDEO PLAYER AREA */}
+        {hasVideo && (
+            <div className="video-player-container glass-panel" style={{ width: '100%', aspectRatio: '16/9', background: '#000', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-lg)' }}>
+                <iframe 
+                    src={getYoutubeEmbedUrl(activeLesson.url)}
+                    style={{ width: '100%', height: '100%', border: 'none' }}
+                    allowFullScreen
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                ></iframe>
+            </div>
+        )}
+
+        {/* TABS FOR TEXT / RESOURCES */}
+        <div className="lesson-tabs" style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0', marginTop: hasVideo ? '0' : '1rem' }}>
+             <button onClick={() => setActiveTab('overview')} style={{ background: 'none', border: 'none', padding: '0.75rem 1.5rem', fontSize: '1rem', fontWeight: activeTab === 'overview' ? '700' : '500', color: activeTab === 'overview' ? 'var(--primary)' : 'var(--text-muted)', borderBottom: activeTab === 'overview' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FileText size={18} /> Lesson Text
+             </button>
+             {(resources.length > 0 || activeLesson.url) && (
+                 <button onClick={() => setActiveTab('resources')} style={{ background: 'none', border: 'none', padding: '0.75rem 1.5rem', fontSize: '1rem', fontWeight: activeTab === 'resources' ? '700' : '500', color: activeTab === 'resources' ? 'var(--primary)' : 'var(--text-muted)', borderBottom: activeTab === 'resources' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <DownloadCloud size={18} /> Resources
+                 </button>
+             )}
+             {course.benefits && JSON.parse(course.benefits || '[]').length > 0 && (
+                 <button onClick={() => setActiveTab('outcomes')} style={{ background: 'none', border: 'none', padding: '0.75rem 1.5rem', fontSize: '1rem', fontWeight: activeTab === 'outcomes' ? '700' : '500', color: activeTab === 'outcomes' ? 'var(--primary)' : 'var(--text-muted)', borderBottom: activeTab === 'outcomes' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <Award size={18} /> Outcomes
+                 </button>
+             )}
+        </div>
+
+        {/* TAB CONTENT */}
+        <div className="tab-content main-lesson-body" style={{ minHeight: hasVideo ? '200px' : '400px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {activeTab === 'overview' && (
+                <div 
+                  className="glass-panel rich-content-container scroll-hide" 
+                  style={{ 
+                    padding: '2.5rem', 
+                    background: 'white', 
+                    flexGrow: 1, 
+                    maxHeight: hasVideo ? '400px' : '600px', 
+                    overflowY: 'auto', 
+                    borderRadius: '16px', 
+                    border: '1px solid var(--border-color)',
+                    boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  {activeLesson.content ? renderRichText(activeLesson.content) : <p style={{ color: 'var(--text-muted)' }}>No text content available for this lesson.</p>}
+                </div>
+            )}
+            
+            {activeTab === 'resources' && (resources.length > 0 || activeLesson.url) && (
                 <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '16px', flexShrink: 0 }}>
                     <h3 style={{ fontSize: '1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <DownloadCloud size={20} className="text-primary" /> Module Assets
@@ -363,9 +463,9 @@ const StudentCourseView = () => {
                         {activeLesson.url && (
                             <a href={activeLesson.url} target="_blank" rel="noopener noreferrer" className="resource-item-btn glass-panel" style={{ padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'white', fontSize: '0.85rem' }}>
                                 <div style={{ background: 'var(--primary)', color: 'white', padding: '0.4rem', borderRadius: '8px' }}>
-                                    {activeLesson.type === 'video' ? <Video size={14} /> : <FileText size={14} />}
+                                    {hasVideo ? <Video size={14} /> : <FileText size={14} />}
                                 </div>
-                                <span style={{ fontWeight: '600' }}>{activeLesson.type === 'video' ? 'Watch Video' : 'Lesson File'}</span>
+                                <span style={{ fontWeight: '600' }}>{hasVideo ? 'Video Link' : 'Lesson File'}</span>
                             </a>
                         )}
 
@@ -381,9 +481,8 @@ const StudentCourseView = () => {
                     </div>
                 </div>
             )}
-            
-            {/* Benefits Section */}
-            {course.benefits && JSON.parse(course.benefits || '[]').length > 0 && (
+
+            {activeTab === 'outcomes' && course.benefits && JSON.parse(course.benefits || '[]').length > 0 && (
                 <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(16,185,129,0.03)', border: '1px solid rgba(16,185,129,0.1)', borderRadius: '16px' }}>
                     <h3 style={{ fontSize: '0.9rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><Award size={16} className="text-secondary" /> Learning Outcomes</h3>
                     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -566,6 +665,9 @@ const StudentCourseView = () => {
                     </div>
                 </div>
                 <div className="course-header-actions" style={{ display: 'flex', gap: '0.75rem' }}>
+                    <button onClick={() => setShowChat(true)} className="nav-btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: 'var(--bg-subtle)' }}>
+                        <MessageSquare size={18} className="text-primary" /> Live Chat
+                    </button>
                     <button onClick={() => setShowDoubts(!showDoubts)} className="nav-btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <MessageCircle size={18} /> Doubts
                     </button>
@@ -732,6 +834,79 @@ const StudentCourseView = () => {
                                     </div>
                                 ))
                             )}
+                        </div>
+                    </div>
+                </motion.div>
+            </>
+        )}
+    </AnimatePresence>
+
+    {/* Chat Drawer */}
+    <AnimatePresence>
+        {showChat && (
+            <>
+                <motion.div 
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                    onClick={() => setShowChat(false)}
+                    style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', zIndex: 9998, backdropFilter: 'blur(8px)' }}
+                />
+                <motion.div 
+                    initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }}
+                    transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+                    className="doubt-drawer"
+                    style={{ position: 'fixed', top: 0, right: 0, width: '480px', height: '100%', background: 'white', zIndex: 9999, boxShadow: '-15px 0 50px rgba(0,0,0,0.2)', padding: '2.5rem', display: 'flex', flexDirection: 'column' }}
+                >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1.5rem' }}>
+                        <div>
+                            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', margin: 0, color: 'var(--text-primary)' }}>
+                                <Users className="text-primary" size={28} /> Lesson Chat
+                            </h2>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.5rem' }}>Discuss and resolve doubts with other learners.</p>
+                        </div>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); setShowChat(false); }} 
+                            className="icon-btn-muted" 
+                            style={{ padding: '0.5rem', borderRadius: '50%', background: 'var(--bg-subtle)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            title="Close"
+                        >
+                            <X size={24} />
+                        </button>
+                    </div>
+
+                    <div style={{ flexGrow: 1, overflowY: 'auto', marginBottom: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', paddingRight: '0.5rem' }}>
+                        {chatMessages.length === 0 ? (
+                            <div style={{ textAlign: 'center', color: 'var(--text-muted)', marginTop: '2rem' }}>
+                                <MessageSquare size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+                                <p>No messages yet.</p>
+                                <p style={{ fontSize: '0.85rem' }}>Be the first to start the discussion!</p>
+                            </div>
+                        ) : (
+                            chatMessages.map(msg => (
+                                <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem', paddingLeft: '0.5rem' }}>
+                                        <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{msg.user_name}</span> • {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </div>
+                                    <div style={{ background: 'var(--bg-subtle)', padding: '0.75rem 1rem', borderRadius: '12px', borderTopLeftRadius: '2px', fontSize: '0.95rem' }}>
+                                        {msg.message}
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '1.5rem' }}>
+                        <div style={{ display: 'flex', gap: '0.75rem' }}>
+                            <input 
+                                className="input-field" 
+                                placeholder="Type your message..." 
+                                value={chatInput}
+                                onChange={e => setChatInput(e.target.value)}
+                                onKeyDown={e => e.key === 'Enter' && handleSendChat()}
+                                style={{ flexGrow: 1 }}
+                            />
+                            <button className="btn-primary" onClick={handleSendChat} disabled={sendingChat || !chatInput.trim()} style={{ padding: '0 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                {sendingChat ? <Loader2 className="animate-spin" size={18} /> : <Send size={18} />}
+                            </button>
                         </div>
                     </div>
                 </motion.div>

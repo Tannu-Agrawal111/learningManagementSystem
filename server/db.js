@@ -111,6 +111,17 @@ function initDb() {
       FOREIGN KEY (lesson_id) REFERENCES lessons (id)
     )`);
 
+    // Chats table for lesson-specific real-time discussion
+    db.run(`CREATE TABLE IF NOT EXISTS chats (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lesson_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      message TEXT NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (lesson_id) REFERENCES lessons (id),
+      FOREIGN KEY (user_id) REFERENCES users (id)
+    )`);
+
     // Run migrations for existing databases
     runMigrations();
 

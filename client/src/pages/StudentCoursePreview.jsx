@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Lock, PlayCircle, ShoppingCart, Eye, Users, User, Star, Zap, Shield, CheckCircle, FileText, Video, Loader2, CreditCard, X, Award, Briefcase, AlertCircle, Plus } from 'lucide-react';
+import { ArrowLeft, Lock, PlayCircle, ShoppingCart, Eye, Users, User, Star, Zap, Shield, CheckCircle, FileText, Video, Loader2, CreditCard, X, Award, Briefcase, AlertCircle, Plus, DownloadCloud } from 'lucide-react';
 import './Student.css';
 
 
@@ -13,6 +13,7 @@ const StudentCoursePreview = () => {
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
   const [activeLesson, setActiveLesson] = useState(null);
+  const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
     const fetch_ = async () => {
@@ -63,6 +64,19 @@ const StudentCoursePreview = () => {
   };
 
   const { course, lessons = [] } = data;
+  
+  const getYoutubeEmbedUrl = (url) => {
+    if (!url) return '';
+    let videoId = '';
+    if (url.includes('v=')) {
+      videoId = url.split('v=')[1]?.split('&')[0];
+    } else if (url.includes('youtu.be/')) {
+      videoId = url.split('youtu.be/')[1]?.split('?')[0];
+    } else if (url.includes('embed/')) {
+      videoId = url.split('embed/')[1]?.split('?')[0];
+    }
+    return videoId ? `https://www.youtube.com/embed/${videoId}?autoplay=1&mute=1` : url;
+  };
   
   const handleEnroll = async () => {
     setEnrolling(true);
@@ -145,7 +159,7 @@ const StudentCoursePreview = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', maxHeight: '420px', overflowY: 'auto' }}>
                 {lessons.map((lesson, idx) => (
-                    <div key={lesson.id} onClick={() => setActiveLesson(lesson)}
+                    <div key={lesson.id} onClick={() => { setActiveLesson(lesson); setActiveTab('overview'); }}
                       style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem', borderRadius: '10px', cursor: 'pointer', background: activeLesson?.id === lesson.id ? 'rgba(99,102,241,0.12)' : 'transparent', border: activeLesson?.id === lesson.id ? '1px solid rgba(99,102,241,0.3)' : '1px solid transparent', transition: 'all 0.15s' }}>
                       <div style={{ flexShrink: 0, width: '28px', height: '28px', borderRadius: '50%', background: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}>
                         <PlayCircle size={14} />
@@ -169,48 +183,86 @@ const StudentCoursePreview = () => {
                 </div>
 
                 <div className="scroll-hide" style={{ overflowY: 'auto', flexGrow: 1, paddingRight: '10px' }}>
-                    {activeLesson.url && (
-                        <div style={{ marginBottom: '2rem', background: 'var(--bg-subtle)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                                <div style={{ background: 'var(--primary)', color: 'white', padding: '0.6rem', borderRadius: '10px' }}>
-                                    {activeLesson.type === 'video' ? <Video size={20} /> : <FileText size={20} />}
-                                </div>
-                                <div>
-                                    <div style={{ fontSize: '1rem', fontWeight: '800' }}>{activeLesson.type === 'video' ? 'Lesson Video' : 'Lesson Material'}</div>
-                                    <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{activeLesson.type === 'video' ? 'Watch this video to understand the concepts.' : 'Download the handout for this lesson.'}</div>
-                                </div>
-                            </div>
-                            <a href={activeLesson.url} target="_blank" rel="noopener noreferrer" className="enroll-btn" style={{ display: 'inline-flex', padding: '0.75rem 1.5rem', fontSize: '0.9rem', gap: '0.5rem', background: 'var(--primary)' }}>
-                                {activeLesson.type === 'video' ? <><PlayCircle size={18} /> Watch Preview</> : <><FileText size={18} /> View Resource</>}
-                            </a>
+                    {activeLesson.url && (activeLesson.type === 'video' || activeLesson.url.includes('youtu')) && (
+                        <div className="video-player-container glass-panel" style={{ width: '100%', aspectRatio: '16/9', background: '#000', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-lg)', marginBottom: '1.5rem' }}>
+                            <iframe 
+                                src={getYoutubeEmbedUrl(activeLesson.url)}
+                                style={{ width: '100%', height: '100%', border: 'none' }}
+                                allowFullScreen
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            ></iframe>
                         </div>
                     )}
                     
-                    {activeLesson.content ? (
-                      <div className="rich-content-container" style={{ background: 'white', padding: '2rem', borderRadius: '12px', border: '1px solid var(--border-color)', marginBottom: '1.5rem' }}>
-                        {renderRichText(activeLesson.content)}
-                      </div>
-                    ) : (
-                      <div style={{ padding: '2rem', textAlign: 'center', background: 'var(--bg-subtle)', borderRadius: '12px', marginBottom: '1.5rem' }}>
-                        <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', margin: 0 }}>No text content available for this lesson.</p>
-                      </div>
-                    )}
-
                     {(() => {
                         let parsedRes = [];
                         try { parsedRes = JSON.parse(activeLesson.resources || '[]'); } catch(e) {}
-                        if (!Array.isArray(parsedRes) || parsedRes.length === 0) return null;
+                        if (!Array.isArray(parsedRes)) parsedRes = [];
+                        
+                        const hasVideo = activeLesson.url && (activeLesson.type === 'video' || activeLesson.url.includes('youtu'));
+                        
                         return (
-                            <div style={{ marginTop: '0.5rem' }}>
-                                <h4 style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}><FileText size={18} className="text-primary" /> Additional Resources</h4>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
-                                    {parsedRes.map((res, idx) => (
-                                        <a key={idx} href={res.url} target="_blank" rel="noopener noreferrer" className="glass-panel" style={{ padding: '0.75rem 1.25rem', textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'white', fontSize: '0.85rem' }}>
-                                            <FileText size={16} className="text-primary" /> {res.title}
-                                        </a>
-                                    ))}
+                            <>
+                                <div className="lesson-tabs" style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0', marginTop: hasVideo ? '0' : '1rem' }}>
+                                    <button onClick={() => setActiveTab('overview')} style={{ background: 'none', border: 'none', padding: '0.75rem 1.5rem', fontSize: '1rem', fontWeight: activeTab === 'overview' ? '700' : '500', color: activeTab === 'overview' ? 'var(--primary)' : 'var(--text-muted)', borderBottom: activeTab === 'overview' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                        <FileText size={18} /> Lesson Text
+                                    </button>
+                                    {(parsedRes.length > 0 || activeLesson.url) && (
+                                        <button onClick={() => setActiveTab('resources')} style={{ background: 'none', border: 'none', padding: '0.75rem 1.5rem', fontSize: '1rem', fontWeight: activeTab === 'resources' ? '700' : '500', color: activeTab === 'resources' ? 'var(--primary)' : 'var(--text-muted)', borderBottom: activeTab === 'resources' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                            <DownloadCloud size={18} /> Resources
+                                        </button>
+                                    )}
                                 </div>
-                            </div>
+                                
+                                <div className="tab-content main-lesson-body" style={{ minHeight: hasVideo ? '200px' : '400px', display: 'flex', flexDirection: 'column', gap: '1.5rem', marginTop: '1.5rem' }}>
+                                    {activeTab === 'overview' && (
+                                        <div 
+                                          className="glass-panel rich-content-container scroll-hide" 
+                                          style={{ 
+                                            padding: '2.5rem', 
+                                            background: 'white', 
+                                            flexGrow: 1, 
+                                            maxHeight: hasVideo ? '400px' : '600px', 
+                                            overflowY: 'auto', 
+                                            borderRadius: '16px', 
+                                            border: '1px solid var(--border-color)',
+                                            boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.02)'
+                                          }}
+                                        >
+                                          {activeLesson.content ? renderRichText(activeLesson.content) : <p style={{ color: 'var(--text-muted)' }}>No text content available for this lesson.</p>}
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'resources' && (parsedRes.length > 0 || activeLesson.url) && (
+                                        <div className="glass-panel" style={{ padding: '1.5rem', background: 'rgba(99,102,241,0.04)', border: '1px solid rgba(99,102,241,0.15)', borderRadius: '16px', flexShrink: 0 }}>
+                                            <h3 style={{ fontSize: '1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                                <DownloadCloud size={20} className="text-primary" /> Module Assets
+                                            </h3>
+                                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' }}>
+                                                {/* Primary Resource */}
+                                                {activeLesson.url && (
+                                                    <a href={activeLesson.url} target="_blank" rel="noopener noreferrer" className="resource-item-btn glass-panel" style={{ padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'white', fontSize: '0.85rem' }}>
+                                                        <div style={{ background: 'var(--primary)', color: 'white', padding: '0.4rem', borderRadius: '8px' }}>
+                                                            {hasVideo ? <Video size={14} /> : <FileText size={14} />}
+                                                        </div>
+                                                        <span style={{ fontWeight: '600' }}>{hasVideo ? 'Video Link' : 'Lesson File'}</span>
+                                                    </a>
+                                                )}
+
+                                                {/* Additional Resources */}
+                                                {parsedRes.map((res, idx) => (
+                                                    <a key={idx} href={res.url} target="_blank" rel="noopener noreferrer" className="resource-item-btn glass-panel" style={{ padding: '0.75rem 1rem', textDecoration: 'none', color: 'inherit', display: 'flex', alignItems: 'center', gap: '0.6rem', background: 'white', fontSize: '0.85rem' }}>
+                                                        <div style={{ background: 'var(--bg-subtle)', color: 'var(--primary)', padding: '0.4rem', borderRadius: '8px', border: '1px solid var(--primary-light)' }}>
+                                                            {res.type === 'video' ? <Video size={14} /> : <FileText size={14} />}
+                                                        </div>
+                                                        <span style={{ fontWeight: '600' }}>{res.title}</span>
+                                                    </a>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </>
                         );
                     })()}
                 </div>
