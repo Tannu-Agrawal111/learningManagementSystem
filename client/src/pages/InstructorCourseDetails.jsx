@@ -30,7 +30,8 @@ import {
   FileCode,
   Image,
   ExternalLink,
-  Zap
+  Zap,
+  Send
 } from 'lucide-react';
 import { AuthContext } from '../context/AuthContext';
 import './Instructor.css';
@@ -318,9 +319,14 @@ const InstructorCourseDetails = () => {
       });
       if (res.ok) {
         const data = await res.json();
-        setChatMessages(data);
+        setChatMessages(Array.isArray(data) ? data : []);
+      } else {
+        setChatMessages([]);
       }
-    } catch (err) { console.error(err); }
+    } catch (err) { 
+        console.error(err);
+        setChatMessages([]);
+    }
   };
 
   // Poll chats if open
@@ -934,10 +940,10 @@ const InstructorCourseDetails = () => {
                           <p>No messages yet.</p>
                       </div>
                   ) : (
-                      chatMessages.map(msg => (
-                          <div key={msg.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                      (Array.isArray(chatMessages) ? chatMessages : []).map(msg => (
+                          <div key={msg.id || Math.random()} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                               <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem', paddingLeft: '0.5rem' }}>
-                                  <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{msg.user_name}</span> • {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  <span style={{ fontWeight: '700', color: 'var(--primary)' }}>{msg.user_name || 'Anonymous'}</span> • {msg.created_at ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Just now'}
                               </div>
                               <div style={{ background: 'var(--bg-subtle)', padding: '0.75rem 1rem', borderRadius: '12px', borderTopLeftRadius: '2px', fontSize: '0.95rem' }}>
                                   {msg.message}
