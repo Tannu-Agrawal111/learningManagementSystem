@@ -1,2 +1,5 @@
 node_modules/
+client/node_modules/
+server/node_modules/
 .env
+database.sqlite  # (Agar aap data cloud me rakh rahe hain)
