@@ -7,7 +7,7 @@ import {
   GraduationCap, Briefcase, Calendar, Loader2, AlertCircle, Camera, ArrowLeft
 } from 'lucide-react';
 
-const API = 'http://localhost:5000/api/auth';
+const API = `${window.API_BASE_URL || 'http://localhost:5000'}/api/auth`;
 
 const Profile = () => {
   const [profileData, setProfileData]   = useState(null);

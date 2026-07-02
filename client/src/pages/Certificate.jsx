@@ -21,7 +21,7 @@ const Certificate = () => {
         const token = localStorage.getItem('token');
         
         // 1. Fetch Course details
-        const courseRes = await fetch(`http://localhost:5000/api/student/courses/${courseId}`, {
+        const courseRes = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/courses/${courseId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         const courseData = await courseRes.json();
@@ -30,7 +30,7 @@ const Certificate = () => {
         }
 
         // 2. Claim/Generate authentic certificate via MongoDB
-        const claimRes = await fetch('http://localhost:5000/api/gamification/certificate/claim', {
+        const claimRes = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/gamification/certificate/claim`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -78,7 +78,7 @@ const Certificate = () => {
         <div style={{ display: 'flex', gap: '1rem' }}>
           {certData?.pdfUrl && (
             <a 
-              href={`http://localhost:5000${certData.pdfUrl}`} 
+              href={`${window.API_BASE_URL || 'http://localhost:5000'}${certData.pdfUrl}`} 
               target="_blank" 
               rel="noopener noreferrer" 
               className="btn-primary" 

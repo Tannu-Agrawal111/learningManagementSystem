@@ -87,7 +87,7 @@ const StudentCourseView = () => {
     if (!activeLesson?.id) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/assessments/lecture/${activeLesson.id}`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/assessments/lecture/${activeLesson.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -105,7 +105,7 @@ const StudentCourseView = () => {
     if (!activeLesson?.id) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/lessons/${activeLesson.id}/chats`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/lessons/${activeLesson.id}/chats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -121,7 +121,7 @@ const StudentCourseView = () => {
     if (!activeLesson?.id) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/live/qna/${courseId}/${activeLesson.id}`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/live/qna/${courseId}/${activeLesson.id}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -138,7 +138,7 @@ const StudentCourseView = () => {
     const second = videoRef.current ? Math.floor(videoRef.current.currentTime) : 0;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/live/qna', {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/live/qna`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -194,7 +194,7 @@ const StudentCourseView = () => {
 
       try {
         const token = localStorage.getItem('token');
-        await fetch('http://localhost:5000/api/progress/save', { 
+        await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/progress/save`, { 
           method: 'POST', 
           headers: { 
             'Content-Type': 'application/json', 
@@ -234,7 +234,7 @@ const StudentCourseView = () => {
     // Save to DB via REST API as well
     try {
       const token = localStorage.getItem('token');
-      await fetch(`http://localhost:5000/api/student/lessons/${activeLesson.id}/chats`, {
+      await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/lessons/${activeLesson.id}/chats`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -252,7 +252,7 @@ const StudentCourseView = () => {
   const fetchCourseDetails = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/courses/${courseId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -278,7 +278,7 @@ const StudentCourseView = () => {
   const fetchDoubts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/doubts`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/doubts`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -299,7 +299,7 @@ const StudentCourseView = () => {
     setCompletingId(lessonId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/lessons/${lessonId}/complete`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/lessons/${lessonId}/complete`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -315,7 +315,7 @@ const StudentCourseView = () => {
     setSubmittingRating(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/rate`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/courses/${courseId}/rate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -339,7 +339,7 @@ const StudentCourseView = () => {
     setSubmittingDoubt(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/doubts`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/doubts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -365,7 +365,7 @@ const StudentCourseView = () => {
   const handleStartQuiz = async (lessonId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/assessments/lecture/${lessonId}`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/assessments/lecture/${lessonId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -396,7 +396,7 @@ const StudentCourseView = () => {
       }
 
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/lessons/${showQuiz}/quizzes/check`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/lessons/${showQuiz}/quizzes/check`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -421,7 +421,7 @@ const StudentCourseView = () => {
     setGeneratingPractice(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/ai/practice`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/ai/practice`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

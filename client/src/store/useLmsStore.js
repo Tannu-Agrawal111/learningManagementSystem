@@ -19,7 +19,7 @@ const useLmsStore = create((set, get) => ({
   login: async (email, password) => {
     set({ loading: true });
     try {
-      const res = await fetch('http://localhost:5000/api/auth/login', {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password })
@@ -52,7 +52,7 @@ const useLmsStore = create((set, get) => ({
       return;
     }
     try {
-      const res = await fetch('http://localhost:5000/api/auth/me', {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/auth/me`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

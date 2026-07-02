@@ -15,7 +15,7 @@ const StudentCertificates = () => {
       try {
         const token = localStorage.getItem('token');
         // Use the new gamification certificates endpoint
-        const res = await fetch('http://localhost:5000/api/gamification/certificates', {
+        const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/gamification/certificates`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) {
@@ -36,7 +36,7 @@ const StudentCertificates = () => {
   const handleDownload = async (courseId) => {
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/gamification/certificates/${courseId}`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/gamification/certificates/${courseId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       if (res.ok) {

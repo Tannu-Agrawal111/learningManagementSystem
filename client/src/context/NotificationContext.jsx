@@ -13,7 +13,7 @@ export const NotificationProvider = ({ children }) => {
     if (!user) return;
     const token = localStorage.getItem('token');
     try {
-      const res = await fetch(`http://localhost:5000/api/notifications?unread=false`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/notifications?unread=false`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
@@ -29,7 +29,7 @@ export const NotificationProvider = ({ children }) => {
 
   const markAsRead = async (id) => {
     const token = localStorage.getItem('token');
-    await fetch(`http://localhost:5000/api/notifications/${id}/read`, {
+    await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/notifications/${id}/read`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}` },
     });
@@ -41,7 +41,7 @@ export const NotificationProvider = ({ children }) => {
 
   const markAllAsRead = async () => {
     const token = localStorage.getItem('token');
-    await fetch(`http://localhost:5000/api/notifications/markAllRead`, {
+    await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/notifications/markAllRead`, {
       method: 'PATCH',
       headers: { Authorization: `Bearer ${token}` },
     });

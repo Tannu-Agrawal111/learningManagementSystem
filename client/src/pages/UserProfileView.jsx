@@ -19,7 +19,7 @@ const UserProfileView = () => {
     const fetch_ = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:5000/api/auth/profile/public/${userId}`, {
+        const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/auth/profile/public/${userId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -28,7 +28,7 @@ const UserProfileView = () => {
             
             // If instructor, also fetch their courses
             if (userData.role === 'instructor') {
-                const resC = await fetch(`http://localhost:5000/api/instructor/public/${userId}`, {
+                const resC = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/instructor/public/${userId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (resC.ok) {

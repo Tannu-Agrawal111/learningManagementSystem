@@ -58,7 +58,7 @@ const TakeAssessment = () => {
 
   const startExam = async () => {
     try {
-      const res = await fetch(`http://localhost:5000/api/assessments/${assessmentId}/start`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/assessments/${assessmentId}/start`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -119,7 +119,7 @@ const TakeAssessment = () => {
 
     const triggerInfraction = async (type) => {
       try {
-        const res = await fetch(`http://localhost:5000/api/assessments/submission/${submission._id}/infraction`, {
+        const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/assessments/submission/${submission._id}/infraction`, {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -187,7 +187,7 @@ const TakeAssessment = () => {
         answer
       }));
 
-      const res = await fetch(`http://localhost:5000/api/assessments/submission/${submission._id}/submit`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/assessments/submission/${submission._id}/submit`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,

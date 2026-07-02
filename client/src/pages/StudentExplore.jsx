@@ -24,8 +24,8 @@ const StudentExplore = () => {
       try {
         const token = localStorage.getItem('token');
         const [catalogRes, enrollRes] = await Promise.all([
-          fetch('http://localhost:5000/api/student/courses', { headers: { Authorization: `Bearer ${token}` } }),
-          fetch('http://localhost:5000/api/student/enrollments', { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/courses`, { headers: { Authorization: `Bearer ${token}` } }),
+          fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/enrollments`, { headers: { Authorization: `Bearer ${token}` } }),
         ]);
         if (catalogRes.ok) setAllCourses(await catalogRes.json());
         if (enrollRes.ok) {
@@ -45,7 +45,7 @@ const StudentExplore = () => {
     setEnrolling(courseId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/enroll`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/courses/${courseId}/enroll`, {
         method: 'POST', headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {

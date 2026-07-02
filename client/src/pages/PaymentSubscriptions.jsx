@@ -13,7 +13,7 @@ const PaymentSubscriptions = () => {
     const fetchPlans = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/payment/plans', {
+        const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/payment/plans`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (res.ok) setPlans(await res.json());
@@ -29,7 +29,7 @@ const PaymentSubscriptions = () => {
   const handleSubscribe = async (planId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/payment/subscribe/${planId}`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/payment/subscribe/${planId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
       });

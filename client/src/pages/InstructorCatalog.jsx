@@ -31,7 +31,7 @@ const InstructorCatalog = () => {
   const fetchCourses = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/instructor/courses', {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/instructor/courses`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {

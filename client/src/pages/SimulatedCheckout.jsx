@@ -22,7 +22,7 @@ const SimulatedCheckout = () => {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/payments/checkout/simulate-success', {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/payments/checkout/simulate-success`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

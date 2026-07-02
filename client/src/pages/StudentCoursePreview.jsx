@@ -19,7 +19,7 @@ const StudentCoursePreview = () => {
     const fetch_ = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/public`, {
+        const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/courses/${courseId}/public`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -82,7 +82,7 @@ const StudentCoursePreview = () => {
     setEnrolling(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/enroll`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/courses/${courseId}/enroll`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });

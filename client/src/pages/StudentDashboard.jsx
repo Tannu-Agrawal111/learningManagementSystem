@@ -23,10 +23,10 @@ const StudentDashboard = () => {
     try {
       const token = localStorage.getItem('token');
       const [enrollRes, gamRes] = await Promise.all([
-        fetch('http://localhost:5000/api/student/enrollments', {
+        fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/enrollments`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
-        fetch('http://localhost:5000/api/gamification/activity/streak', {
+        fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/gamification/activity/streak`, {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
@@ -63,7 +63,7 @@ const StudentDashboard = () => {
     setUnenrollingId(enrollmentId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:5000/api/student/enrollments/${enrollmentId}/delete`, {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/student/enrollments/${enrollmentId}/delete`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
       });

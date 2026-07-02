@@ -20,7 +20,7 @@ const InstructorCourseForm = () => {
     // Fetch instructor profile
     const fetchProfile = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/auth/profile', {
+        const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/auth/profile`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -34,7 +34,7 @@ const InstructorCourseForm = () => {
     // Fetch payment details to verify if instructor has set up payout info
     const fetchPaymentDetails = async () => {
       try {
-        const res = await fetch('http://localhost:5000/api/instructor/payment-details', {
+        const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/instructor/payment-details`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -71,7 +71,7 @@ const InstructorCourseForm = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('http://localhost:5000/api/instructor/courses', {
+      const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/instructor/courses`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

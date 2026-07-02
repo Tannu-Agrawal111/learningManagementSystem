@@ -13,7 +13,7 @@ const StudentStreak = () => {
     const fetchStreak = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('http://localhost:5000/api/gamification/activity/streak', {
+        const res = await fetch(`${window.API_BASE_URL || 'http://localhost:5000'}/api/gamification/activity/streak`, {
           method: 'GET',
           headers: {
             Authorization: `Bearer ${token}`
