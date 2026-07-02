@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback_secret_key';
+const JWT_SECRET = process.env.JWT_SECRET; // Must be set in production
 
 const authMiddleware = (req, res, next) => {
   const authHeader = req.headers.authorization;
