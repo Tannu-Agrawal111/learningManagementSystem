@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { socket, connectSocket } from '../utils/socket';
 import { 
   ArrowLeft, 
   CheckCircle2, 
@@ -24,7 +25,8 @@ import {
   Sparkles,
   Loader2,
   Image,
-  Star
+  Star,
+  ShieldAlert
 } from 'lucide-react';
 import './Student.css';
 
@@ -66,18 +68,44 @@ const StudentCourseView = () => {
   const [chatInput, setChatInput] = useState('');
   const [sendingChat, setSendingChat] = useState(false);
 
+  // In-Video Contextual Q&A states
+  const [videoQnas, setVideoQnas] = useState([]);
+  const [qnaCommentText, setQnaCommentText] = useState('');
+  const [activeAssessment, setActiveAssessment] = useState(null);
+  const videoRef = useRef(null);
+
   useEffect(() => {
     if (activeLesson) {
         setActiveTab('overview');
         fetchChats();
+        fetchQnas();
+        fetchAssessment();
     }
   }, [activeLesson]);
+
+  const fetchAssessment = async () => {
+    if (!activeLesson?.id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/assessments/lecture/${activeLesson.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActiveAssessment(data);
+      } else {
+        setActiveAssessment(null);
+      }
+    } catch (err) {
+      setActiveAssessment(null);
+    }
+  };
 
   const fetchChats = async () => {
     if (!activeLesson?.id) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${activeLesson.id}/chats`, {
+      const res = await fetch(`http://localhost:5000/api/student/lessons/${activeLesson.id}/chats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -89,21 +117,124 @@ const StudentCourseView = () => {
     }
   };
 
-  // Add polling for real-time chat
-  useEffect(() => {
-    let interval;
-    if (showChat && activeLesson?.id) {
-        interval = setInterval(fetchChats, 3000);
+  const fetchQnas = async () => {
+    if (!activeLesson?.id) return;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/live/qna/${courseId}/${activeLesson.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVideoQnas(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch Q&A comments');
     }
-    return () => clearInterval(interval);
-  }, [showChat, activeLesson]);
+  };
+
+  const handlePostQna = async () => {
+    if (!qnaCommentText.trim() || !activeLesson?.id) return;
+    const second = videoRef.current ? Math.floor(videoRef.current.currentTime) : 0;
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('http://localhost:5000/api/live/qna', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          courseId,
+          lectureId: activeLesson.id,
+          second,
+          comment: qnaCommentText
+        })
+      });
+      if (res.ok) {
+        setQnaCommentText('');
+        fetchQnas();
+      }
+    } catch (err) {
+      alert('Failed to post Q&A comment');
+    }
+  };
+
+  // Socket.io Room Registration for Live Chat
+  useEffect(() => {
+    if (!activeLesson?.id) return;
+    
+    // Connect user to socket server
+    const studentUser = JSON.parse(localStorage.getItem('user')) || {};
+    if (studentUser.id) {
+      connectSocket(studentUser.id);
+      
+      // Join lobby
+      socket.emit('join_lecture_lobby', activeLesson.id);
+    }
+
+    // Listener for real-time messages
+    socket.on('receive_lobby_msg', (newMsg) => {
+      setChatMessages(prev => [...prev, newMsg]);
+    });
+
+    return () => {
+      socket.off('receive_lobby_msg');
+    };
+  }, [activeLesson]);
+
+  // Video Playback Continuity Background updates (saves every 5 seconds)
+  useEffect(() => {
+    if (!activeLesson || activeLesson.type !== 'video') return;
+
+    const savePlaybackProgress = async () => {
+      if (!videoRef.current) return;
+      const currentTime = Math.floor(videoRef.current.currentTime);
+      const duration = Math.floor(videoRef.current.duration) || 0;
+
+      try {
+        const token = localStorage.getItem('token');
+        await fetch('http://localhost:5000/api/progress/save', { 
+          method: 'POST', 
+          headers: { 
+            'Content-Type': 'application/json', 
+            'Authorization': `Bearer ${token}` 
+          }, 
+          body: JSON.stringify({ 
+            lectureId: activeLesson.id, 
+            completed: currentTime >= duration - 5 && duration > 0, 
+            lastPositionSeconds: currentTime 
+          }) 
+        });
+      } catch (err) {
+        console.warn('Playback continuity failed to auto-save:', err.message);
+      }
+    };
+
+    const interval = setInterval(savePlaybackProgress, 5000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, [activeLesson, courseId]);
 
   const handleSendChat = async () => {
     if (!chatInput.trim() || !activeLesson?.id) return;
-    setSendingChat(true);
+    
+    const studentUser = JSON.parse(localStorage.getItem('user')) || {};
+    
+    // Dispatch via Socket.io so everyone in the lobby gets it instantly
+    socket.emit('send_lobby_msg', {
+      lectureId: activeLesson.id,
+      message: chatInput,
+      userName: studentUser.name || 'Learner',
+      userId: studentUser.id
+    });
+    
+    // Save to DB via REST API as well
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${activeLesson.id}/chats`, {
+      await fetch(`http://localhost:5000/api/student/lessons/${activeLesson.id}/chats`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -111,22 +242,17 @@ const StudentCourseView = () => {
         },
         body: JSON.stringify({ message: chatInput })
       });
-      if (res.ok) {
-        const newMsg = await res.json();
-        setChatMessages([...chatMessages, newMsg]);
-        setChatInput('');
-      }
     } catch (err) {
-      console.error('Failed to send chat');
-    } finally {
-      setSendingChat(false);
+      console.error('Failed to sync chat to DB');
     }
+
+    setChatInput('');
   };
 
   const fetchCourseDetails = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${courseId}`, {
+      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
@@ -152,7 +278,7 @@ const StudentCourseView = () => {
   const fetchDoubts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/doubts`, {
+      const res = await fetch(`http://localhost:5000/api/student/doubts`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -173,7 +299,7 @@ const StudentCourseView = () => {
     setCompletingId(lessonId);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${lessonId}/complete`, {
+      const res = await fetch(`http://localhost:5000/api/student/lessons/${lessonId}/complete`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -189,7 +315,7 @@ const StudentCourseView = () => {
     setSubmittingRating(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${courseId}/rate`, {
+      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/rate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -213,7 +339,7 @@ const StudentCourseView = () => {
     setSubmittingDoubt(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/doubts`, {
+      const res = await fetch(`http://localhost:5000/api/student/doubts`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -239,18 +365,17 @@ const StudentCourseView = () => {
   const handleStartQuiz = async (lessonId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${lessonId}/quizzes`, {
+      const res = await fetch(`http://localhost:5000/api/assessments/lecture/${lessonId}`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await res.json();
       if (res.ok) {
-        setQuizzes(data);
-        setShowQuiz(lessonId);
-        setQuizAnswers({});
-        setQuizResult(null);
+        navigate(`/student/assessment/${data._id}`);
+      } else {
+        alert(data.message || 'No proctored assessment configured for this lesson.');
       }
     } catch (err) {
-      alert('Failed to load quiz');
+      alert('Failed to load proctored assessment details');
     }
   };
 
@@ -271,7 +396,7 @@ const StudentCourseView = () => {
       }
 
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${showQuiz}/quizzes/check`, {
+      const res = await fetch(`http://localhost:5000/api/student/lessons/${showQuiz}/quizzes/check`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -296,7 +421,7 @@ const StudentCourseView = () => {
     setGeneratingPractice(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/ai/practice`, {
+      const res = await fetch(`http://localhost:5000/api/student/ai/practice`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -404,15 +529,47 @@ const StudentCourseView = () => {
     return (
       <div className="lesson-content-wrapper" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         
+        {activeAssessment && (
+            <div className="glass-panel" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1.5rem', background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.08), rgba(99, 102, 241, 0.08))', border: '1px solid rgba(239, 68, 68, 0.25)', borderRadius: '16px', gap: '1rem', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                    <div style={{ background: '#EF4444', color: 'white', padding: '0.6rem', borderRadius: '12px' }}>
+                        <ShieldAlert size={24} />
+                    </div>
+                    <div>
+                        <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#EF4444', fontWeight: '800' }}>Secure AI Proctored Assessment Available</h4>
+                        <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+                            Title: <strong>{activeAssessment.title}</strong> • Duration: {activeAssessment.durationMinutes} mins. Tab lock active.
+                        </p>
+                    </div>
+                </div>
+                <button 
+                    onClick={() => navigate(`/student/assessment/${activeAssessment._id}`)} 
+                    className="btn-primary" 
+                    style={{ background: 'linear-gradient(135deg, #EF4444, #DC2626)', border: 'none', padding: '0.7rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}
+                >
+                    <Sparkles size={16} /> Start Proctored Exam
+                </button>
+            </div>
+        )}
+
         {/* VIDEO PLAYER AREA */}
         {hasVideo && (
             <div className="video-player-container glass-panel" style={{ width: '100%', aspectRatio: '16/9', background: '#000', borderRadius: '16px', overflow: 'hidden', border: '1px solid var(--border-color)', boxShadow: 'var(--shadow-lg)' }}>
-                <iframe 
-                    src={getYoutubeEmbedUrl(activeLesson.url)}
-                    style={{ width: '100%', height: '100%', border: 'none' }}
-                    allowFullScreen
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                ></iframe>
+                {activeLesson.url && activeLesson.url.includes('youtu') ? (
+                    <iframe 
+                        src={getYoutubeEmbedUrl(activeLesson.url)}
+                        style={{ width: '100%', height: '100%', border: 'none' }}
+                        allowFullScreen
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    ></iframe>
+                ) : (
+                    <video 
+                        ref={videoRef}
+                        src={activeLesson.url}
+                        controls
+                        style={{ width: '100%', height: '100%' }}
+                    />
+                )}
             </div>
         )}
 
@@ -424,6 +581,11 @@ const StudentCourseView = () => {
              {(resources.length > 0 || activeLesson.url) && (
                  <button onClick={() => setActiveTab('resources')} style={{ background: 'none', border: 'none', padding: '0.75rem 1.5rem', fontSize: '1rem', fontWeight: activeTab === 'resources' ? '700' : '500', color: activeTab === 'resources' ? 'var(--primary)' : 'var(--text-muted)', borderBottom: activeTab === 'resources' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <DownloadCloud size={18} /> Resources
+                 </button>
+             )}
+             {hasVideo && (
+                 <button onClick={() => setActiveTab('qna')} style={{ background: 'none', border: 'none', padding: '0.75rem 1.5rem', fontSize: '1rem', fontWeight: activeTab === 'qna' ? '700' : '500', color: activeTab === 'qna' ? 'var(--primary)' : 'var(--text-muted)', borderBottom: activeTab === 'qna' ? '2px solid var(--primary)' : '2px solid transparent', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <MessageSquare size={18} /> Timeline Q&A
                  </button>
              )}
              {course.benefits && JSON.parse(course.benefits || '[]').length > 0 && (
@@ -478,6 +640,50 @@ const StudentCourseView = () => {
                                 <span style={{ fontWeight: '600' }}>{res.title}</span>
                             </a>
                         ))}
+                    </div>
+                </div>
+            )}
+
+            {activeTab === 'qna' && (
+                <div className="glass-panel" style={{ padding: '1.5rem', background: 'white', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+                    <h3 style={{ fontSize: '1.1rem', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <MessageSquare size={18} className="text-primary" /> In-Video Contextual Q&A
+                    </h3>
+                    <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1.5rem' }}>
+                        <input 
+                            className="input-field"
+                            placeholder="Type a question mapped to current video time..."
+                            value={qnaCommentText}
+                            onChange={e => setQnaCommentText(e.target.value)}
+                        />
+                        <button className="btn-primary" onClick={handlePostQna}>Post Comment</button>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                        {videoQnas.length === 0 ? (
+                            <p style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.9rem' }}>No timestamp comments yet.</p>
+                        ) : (
+                            videoQnas.map((q, i) => (
+                                <div key={i} style={{ padding: '1rem', background: 'var(--bg-subtle)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>
+                                            <strong>{q.student?.name || 'Learner'}</strong> posted:
+                                        </div>
+                                        <p style={{ fontSize: '0.9rem', color: 'var(--text-primary)' }}>{q.comment}</p>
+                                    </div>
+                                    <button 
+                                        onClick={() => {
+                                            if (videoRef.current) {
+                                                videoRef.current.currentTime = q.second;
+                                                videoRef.current.play();
+                                            }
+                                        }}
+                                        style={{ background: 'var(--primary)', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                                    >
+                                        Seek {Math.floor(q.second / 60)}:{(q.second % 60).toString().padStart(2, '0')}
+                                    </button>
+                                </div>
+                            ))
+                        )}
                     </div>
                 </div>
             )}

@@ -1,10 +1,12 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { useNotification } from '../context/NotificationContext';
 import './Navbar.css';
 
 const Navbar = () => {
   const { user, logout } = useContext(AuthContext);
+  const { unreadCount } = useNotification();
   const navigate = useNavigate();
   const location = useLocation();
   const [scrolled, setScrolled] = useState(false);
@@ -23,7 +25,7 @@ const Navbar = () => {
     const fetchAvatar = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/auth/profile', {
+        const res = await fetch('http://localhost:5000/api/auth/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -57,27 +59,59 @@ const Navbar = () => {
             <>
               {user.role === 'student' && (
                 <>
-                  <Link to="/dashboard" className="nav-link">Dashboard</Link>
+                  <Link
+                    to="/dashboard"
+                    className={`nav-link ${location.pathname === '/dashboard' ? 'nav-link--active' : ''}`}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/student/explore"
+                    className={`nav-link ${location.pathname.startsWith('/student/explore') ? 'nav-link--active' : ''}`}
+                  >
+                    Explore
+                  </Link>
+                  <Link to="/dashboard/notifications">
+                    <button className="nav-icon-btn" title="Notifications" aria-label="Notifications">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+                      </svg>
+                      {unreadCount > 0 && (
+                        <span className="notification-badge">{unreadCount}</span>
+                      )}
+                    </button>
+                  </Link>
                 </>
               )}
               {user.role === 'instructor' && (
                 <>
-                  <Link to="/instructor/dashboard" className="nav-link">Dashboard</Link>
+                  <Link
+                    to="/instructor/dashboard"
+                    className={`nav-link ${location.pathname === '/instructor/dashboard' ? 'nav-link--active' : ''}`}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/instructor/catalog"
+                    className={`nav-link ${location.pathname === '/instructor/catalog' ? 'nav-link--active' : ''}`}
+                  >
+                    Courses
+                  </Link>
                 </>
               )}
-              <Link to="/profile" className="user-profile" style={{ textDecoration: 'none' }}
-                title="View / Edit Profile">
+
+              {/* Profile Icon Avatar */}
+              <Link to="/profile" className="user-profile" style={{ textDecoration: 'none' }} title="View / Edit Profile">
                 <div className="avatar" style={{ overflow: 'hidden', padding: 0 }}>
                   {avatarSrc
                     ? <img src={avatarSrc} alt="avatar"
                         style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
                     : initials}
                 </div>
-                <div className="user-details">
-                  <span className="user-name">{user.name}</span>
-                  <span className="user-role">{user.role}</span>
-                </div>
               </Link>
+
               <button onClick={handleLogout} className="nav-btn-outline">
                 Logout
               </button>

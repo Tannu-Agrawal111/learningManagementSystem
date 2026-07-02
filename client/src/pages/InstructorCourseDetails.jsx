@@ -91,7 +91,7 @@ const InstructorCourseDetails = () => {
   const fetchCourseData = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses', {
+      const res = await fetch('http://localhost:5000/api/instructor/courses', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -105,7 +105,7 @@ const InstructorCourseDetails = () => {
   const fetchLessons = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses/${courseId}/lessons`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/courses/${courseId}/lessons`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -122,7 +122,7 @@ const InstructorCourseDetails = () => {
   const fetchAnalytics = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses/${courseId}/analytics`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/courses/${courseId}/analytics`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -135,7 +135,7 @@ const InstructorCourseDetails = () => {
   const fetchDoubts = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/doubts`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/doubts`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -148,7 +148,7 @@ const InstructorCourseDetails = () => {
   const fetchStudents = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses/${courseId}/students`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/courses/${courseId}/students`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -165,8 +165,8 @@ const InstructorCourseDetails = () => {
     try {
       const token = localStorage.getItem('token');
       const url = editingLesson 
-        ? `https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/lessons/${editingLesson.id}`
-        : `https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses/${courseId}/lessons`;
+        ? `http://localhost:5000/api/instructor/lessons/${editingLesson.id}`
+        : `http://localhost:5000/api/instructor/courses/${courseId}/lessons`;
       
       const method = editingLesson ? 'PUT' : 'POST';
       const order_index = editingLesson ? editingLesson.order_index : lessons.length + 1;
@@ -209,7 +209,7 @@ const InstructorCourseDetails = () => {
     if (!window.confirm('Delete this lesson and all its quizzes?')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/lessons/${lessonId}`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/lessons/${lessonId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -295,7 +295,7 @@ const InstructorCourseDetails = () => {
   const fetchQuizzes = async (lessonId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/lessons/${lessonId}/quizzes`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/lessons/${lessonId}/quizzes`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -314,7 +314,7 @@ const InstructorCourseDetails = () => {
   const fetchChats = async (lessonId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${lessonId || activeLessonId}/chats`, {
+      const res = await fetch(`http://localhost:5000/api/student/lessons/${lessonId || activeLessonId}/chats`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -343,7 +343,7 @@ const InstructorCourseDetails = () => {
     setSendingChat(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/lessons/${activeLessonId}/chats`, {
+      const res = await fetch(`http://localhost:5000/api/student/lessons/${activeLessonId}/chats`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -368,7 +368,7 @@ const InstructorCourseDetails = () => {
     if (!newQuiz.correct_answer) return alert('Select a correct answer');
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/lessons/${activeLessonId}/quizzes`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/lessons/${activeLessonId}/quizzes`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -387,7 +387,7 @@ const InstructorCourseDetails = () => {
     if (!window.confirm('Delete this question?')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/lessons/${activeLessonId}/quizzes/${quizId}`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/lessons/${activeLessonId}/quizzes/${quizId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -401,7 +401,7 @@ const InstructorCourseDetails = () => {
     setGeneratingAI(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/ai/generate-quiz`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/ai/generate-quiz`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ content: lesson.content, title: lesson.title }),
@@ -409,7 +409,7 @@ const InstructorCourseDetails = () => {
       const data = await res.json();
       if (res.ok) {
         for (const quiz of data) {
-           await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/lessons/${activeLessonId}/quizzes`, {
+           await fetch(`http://localhost:5000/api/instructor/lessons/${activeLessonId}/quizzes`, {
              method: 'POST',
              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
              body: JSON.stringify(quiz),
@@ -423,7 +423,7 @@ const InstructorCourseDetails = () => {
   const handleAnswerDoubt = async (doubtId) => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/doubts/${doubtId}/answer`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/doubts/${doubtId}/answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
         body: JSON.stringify({ answer: answerText }),

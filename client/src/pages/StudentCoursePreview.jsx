@@ -19,7 +19,7 @@ const StudentCoursePreview = () => {
     const fetch_ = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${courseId}/public`, {
+        const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/public`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -82,7 +82,7 @@ const StudentCoursePreview = () => {
     setEnrolling(true);
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${courseId}/enroll`, {
+      const res = await fetch(`http://localhost:5000/api/student/courses/${courseId}/enroll`, {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -303,7 +303,11 @@ const StudentCoursePreview = () => {
                 </div>
               </div>
               <button onClick={handleEnroll} disabled={enrolling} className="enroll-btn" style={{ padding: '0.9rem 2rem', background: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0, fontSize: '1rem' }}>
-                {enrolling ? <Loader2 className="animate-spin" size={20} /> : <><Plus size={20} /> Enroll Now for Free</>}
+                {enrolling ? (
+                  <Loader2 className="animate-spin" size={20} />
+                ) : (
+                  <><Plus size={20} /> Enroll for Free</>
+                )}
               </button>
             </motion.div>
           </div>

@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { authMiddleware, instructorMiddleware } = require('../middleware/auth');
+const Notification = require('../models/Notification');
+const { sendNotification } = require('../utils/notifications');
 
 // All routes in this file require authentication and instructor role
 router.use(authMiddleware);
@@ -104,13 +106,46 @@ router.post('/courses/:courseId/lessons', (req, res) => {
   const { title, content, type, url, order_index, resources, is_preview } = req.body;
 
   db.run(
-    'INSERT INTO lessons (course_id, title, content, type, url, order_index, resources, is_preview) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-    [courseId, title, content, type || 'text', url, order_index, resources || '[]', is_preview ? 1 : 0],
-    function (err) {
-      if (err) return res.status(500).json({ message: 'Failed to create lesson' });
-      res.json({ id: this.lastID, course_id: courseId, title, content, type: type || 'text', url, order_index, resources: resources || '[]', is_preview: is_preview ? 1 : 0 });
-    }
-  );
+      'INSERT INTO lessons (course_id, title, content, type, url, order_index, resources, is_preview) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [courseId, title, content, type || 'text', url, order_index, resources || '[]', is_preview ? 1 : 0],
+      function (err) {
+        if (err) return res.status(500).json({ message: 'Failed to create lesson' });
+        const lessonId = this.lastID;
+        // Respond immediately
+        res.json({ id: lessonId, course_id: courseId, title, content, type: type || 'text', url, order_index, resources: resources || '[]', is_preview: is_preview ? 1 : 0 });
+        // Async: fetch course title
+        db.get('SELECT title FROM courses WHERE id = ?', [courseId], (err2, courseRow) => {
+          if (err2) return console.error('Failed to fetch course title:', err2);
+          const courseTitle = courseRow.title;
+          // Fetch enrolled students
+          db.all('SELECT u.id, u.email FROM enrollments e JOIN users u ON e.student_id = u.id WHERE e.course_id = ?', [courseId], (err3, students) => {
+            if (err3) return console.error('Failed to fetch enrolled students:', err3);
+            students.forEach(stu => {
+              const message = `New lesson "${title}" added to course "${courseTitle}"`;
+              // Save notification in MongoDB and then send via socket/email
+              const newNotif = new Notification({
+                recipient: stu.id.toString(),
+                triggerType: 'new_lesson',
+                courseRef: courseId.toString(),
+                lessonRef: lessonId.toString(),
+                message
+              });
+              newNotif.save()
+                .then(savedNotif => {
+                  sendNotification(stu.id, stu.email, 'New Lesson Added', message, { 
+                    actionUrl: `/student/courses/${courseId}`,
+                    dbNotification: savedNotif
+                  });
+                })
+                .catch(e => {
+                  console.error('Notification save error:', e);
+                  sendNotification(stu.id, stu.email, 'New Lesson Added', message, { actionUrl: `/student/courses/${courseId}` });
+                });
+            });
+          });
+        });
+      }
+    );
 });
 
 // @route PUT /api/instructor/lessons/:lessonId

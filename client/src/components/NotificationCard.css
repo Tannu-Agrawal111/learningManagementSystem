@@ -1,0 +1,71 @@
+/* NotificationCard.css */
+/* Premium, colour‑coded notification cards */
+
+:root {
+  --card-bg: hsl(210, 15%, 14%);
+  --card-bg-dark: hsl(210, 15%, 20%);
+  --card-hover-bg: hsl(210, 15%, 18%);
+  --text-primary: hsl(210, 10%, 90%);
+  --text-muted: hsl(210, 10%, 60%);
+  --border-radius: 0.75rem;
+  --transition: all 0.2s ease-in-out;
+  --accent-lesson: hsl(200, 80%, 50%);
+  --accent-streak: hsl(40, 80%, 50%);
+}
+
+.notification-card {
+  background: var(--card-bg);
+  color: var(--text-primary);
+  border-radius: var(--border-radius);
+  padding: 1rem 1.2rem;
+  margin-bottom: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  transition: var(--transition);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  cursor: pointer;
+}
+
+.notification-card:hover {
+  background: var(--card-hover-bg);
+}
+
+.notification-card.unread {
+  border-left: 4px solid var(--accent-lesson);
+}
+
+.notification-card.streak.unread {
+  border-left-color: var(--accent-streak);
+}
+
+.notification-card.read {
+  opacity: 0.7;
+}
+
+.notification-icon {
+  font-size: 1.4rem;
+  margin-bottom: 0.4rem;
+}
+
+.notification-content {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.notification-message {
+  margin: 0;
+  font-size: 0.96rem;
+  line-height: 1.4;
+}
+
+.notification-time {
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+@media (prefers-color-scheme: dark) {
+  .notification-card { background: var(--card-bg-dark); }
+}

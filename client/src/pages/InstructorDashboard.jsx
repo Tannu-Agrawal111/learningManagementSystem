@@ -39,17 +39,38 @@ const InstructorDashboard = () => {
   const [profile, setProfile] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [error, setError] = useState('');
+  const [analyticsData, setAnalyticsData] = useState({
+    revenue: { totalCourses: 0, totalEnrollments: 0, grossRevenue: 0, instructorShare: 0 },
+    dropoff: [],
+    testScores: []
+  });
 
   useEffect(() => {
     fetchCourses();
     fetchActivity();
     fetchProfile();
-  }, []);
+    if (user?.id) fetchAnalytics();
+  }, [user]);
+
+  const fetchAnalytics = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch(`http://localhost:5000/api/analytics/instructor-dashboard/${user.id}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAnalyticsData(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch analytics', err);
+    }
+  };
 
   const fetchCourses = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses', {
+      const res = await fetch('http://localhost:5000/api/instructor/courses', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -66,7 +87,7 @@ const InstructorDashboard = () => {
   const fetchActivity = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/activity', {
+      const res = await fetch('http://localhost:5000/api/instructor/activity', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -78,7 +99,7 @@ const InstructorDashboard = () => {
   const fetchProfile = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/auth/profile', {
+      const res = await fetch('http://localhost:5000/api/auth/profile', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -99,7 +120,7 @@ const InstructorDashboard = () => {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses/${editingCourse.id}/edit`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/courses/${editingCourse.id}/edit`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -127,7 +148,7 @@ const InstructorDashboard = () => {
     if (!window.confirm('Are you sure you want to delete this course? This action cannot be undone.')) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses/${courseId}`, {
+      const res = await fetch(`http://localhost:5000/api/instructor/courses/${courseId}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
@@ -195,65 +216,99 @@ const InstructorDashboard = () => {
           <h1 style={{ fontSize: '2.5rem', fontWeight: '800' }}>Instructor <span className="text-gradient">Hub</span></h1>
           <p style={{ fontSize: '1.1rem', color: 'var(--text-secondary)' }}>Welcome back, {user.name}. Manage your academy and explore others.</p>
         </div>
-        <Link to="/instructor/courses/new" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Plus size={20} /> Create New Course
-        </Link>
       </motion.div>
 
-      {/* Quick Stats */}
-      <div className="stats-main-grid">
-        <div>
-           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '1.5rem' }}>
-            <div className="stat-card glass-panel" style={{ padding: '1.5rem' }}>
-              <div style={{ color: 'var(--primary)', marginBottom: '0.5rem' }}><Users size={24} /></div>
-              <div style={{ fontSize: '1.5rem', fontWeight: '800' }}>{myCourses.reduce((acc, c) => acc + (c.total_students || 0), 0)}</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>My Total Students</div>
-            </div>
-            <div className="stat-card glass-panel" style={{ padding: '1.5rem' }}>
-              <div style={{ color: 'var(--secondary)', marginBottom: '0.5rem' }}><BookOpen size={24} /></div>
-              <div style={{ fontSize: '1.5rem', fontWeight: '800' }}>{myCourses.length}</div>
-              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>My Active Courses</div>
-            </div>
+      {/* Quick Stats – 3-column balanced grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', marginBottom: '2.5rem' }}>
+        <div className="stat-card glass-panel" style={{ padding: '1.75rem' }}>
+          <div style={{ color: 'var(--primary)', marginBottom: '0.75rem' }}><Users size={26} /></div>
+          <div style={{ fontSize: '2rem', fontWeight: '800', lineHeight: 1 }}>{myCourses.reduce((acc, c) => acc + (c.total_students || 0), 0)}</div>
+          <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>My Total Students</div>
+        </div>
+        <div className="stat-card glass-panel" style={{ padding: '1.75rem' }}>
+          <div style={{ color: 'var(--secondary)', marginBottom: '0.75rem' }}><BookOpen size={26} /></div>
+          <div style={{ fontSize: '2rem', fontWeight: '800', lineHeight: 1 }}>{myCourses.length}</div>
+          <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>My Active Courses</div>
+        </div>
+        <div className="stat-card glass-panel" style={{ padding: '1.75rem' }}>
+          <div style={{ color: 'var(--accent)', marginBottom: '0.75rem' }}><Globe size={26} /></div>
+          <div style={{ fontSize: '2rem', fontWeight: '800', lineHeight: 1 }}>{courses.length}</div>
+          <div style={{ fontSize: '0.88rem', color: 'var(--text-secondary)', marginTop: '0.4rem' }}>Global Library Count</div>
+        </div>
+      </div>          {/* Activity Graphs Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '2rem', marginBottom: '3rem' }}>
+            {activityData.length > 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel" style={{ padding: '2rem' }}>
+                 <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                   <TrendingUp size={20} className="text-primary" /> Student Engagement Trends
+                 </h3>
+                 <div style={{ height: '240px', width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={activityData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                        <defs>
+                          <linearGradient id="colorEngage" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="var(--secondary)" stopOpacity={0.3}/>
+                            <stop offset="95%" stopColor="var(--secondary)" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                        <XAxis dataKey="date" label={{ value: 'Date', position: 'insideBottom', offset: -10, fontSize: 10 }} tick={{ fontSize: 10 }} />
+                        <YAxis label={{ value: 'Engagements', angle: -90, position: 'insideLeft', fontSize: 10 }} tick={{ fontSize: 10 }} />
+                        <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
+                        <Area type="monotone" dataKey="count" stroke="var(--secondary)" strokeWidth={3} fillOpacity={1} fill="url(#colorEngage)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                 </div>
+              </motion.div>
+            )}
+
+            {analyticsData.dropoff && analyticsData.dropoff.length > 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel" style={{ padding: '2rem' }}>
+                 <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                   <BarChart2 size={20} className="text-primary" /> Student Completion Drop-offs
+                 </h3>
+                 <div style={{ height: '240px', width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={analyticsData.dropoff} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                        <XAxis dataKey="lectureId" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Bar dataKey="studentCount" fill="var(--primary)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                 </div>
+              </motion.div>
+            )}
+
+            {analyticsData.testScores && analyticsData.testScores.length > 0 && (
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel" style={{ padding: '2rem' }}>
+                 <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                   <TrendingUp size={20} className="text-secondary" /> Quiz Average Scores
+                 </h3>
+                 <div style={{ height: '240px', width: '100%' }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={analyticsData.testScores} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
+                        <XAxis dataKey="title" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <Tooltip />
+                        <Area type="monotone" dataKey="averageScore" stroke="var(--secondary)" fill="rgba(16,185,129,0.2)" />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                 </div>
+              </motion.div>
+            )}
           </div>
 
-          {/* Activity Graph */}
-          {activityData.length > 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="glass-panel" style={{ padding: '2rem' }}>
-               <h3 style={{ fontSize: '1.25rem', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                 <TrendingUp size={20} className="text-primary" /> Student Engagement Trends
-               </h3>
-               <div style={{ height: '240px', width: '100%' }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={activityData} margin={{ top: 10, right: 10, left: -20, bottom: 20 }}>
-                      <defs>
-                        <linearGradient id="colorEngage" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="var(--secondary)" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="var(--secondary)" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                      <XAxis dataKey="date" label={{ value: 'Date', position: 'insideBottom', offset: -10, fontSize: 10 }} tick={{ fontSize: 10 }} />
-                      <YAxis label={{ value: 'Engagements', angle: -90, position: 'insideLeft', fontSize: 10 }} tick={{ fontSize: 10 }} />
-                      <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
-                      <Area type="monotone" dataKey="count" stroke="var(--secondary)" strokeWidth={3} fillOpacity={1} fill="url(#colorEngage)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-               </div>
-            </motion.div>
-          )}
+      <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <TrendingUp size={24} className="text-primary" />
+          <h2 style={{ fontSize: '1.75rem' }}>My Courses</h2>
         </div>
-        
-        <div className="stat-card glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', textAlign: 'center' }}>
-          <div style={{ color: 'var(--accent)', marginBottom: '0.5rem', display: 'flex', justifyContent: 'center' }}><Globe size={32} /></div>
-          <div style={{ fontSize: '2rem', fontWeight: '800' }}>{courses.length}</div>
-          <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Global Library Count</div>
-          <div style={{ marginTop: '1rem', fontSize: '0.75rem', background: 'rgba(245,158,11,0.1)', color: 'var(--accent)', padding: '0.4rem', borderRadius: '4px', fontWeight: '700' }}>COMMUNITY DRIVEN</div>
-        </div>
-      </div>
-
-      <div className="section-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        <TrendingUp size={24} className="text-primary" />
-        <h2 style={{ fontSize: '1.75rem' }}>My Courses</h2>
+        <Link to="/instructor/courses/new" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', padding: '0.6rem 1.25rem', fontSize: '0.9rem', borderRadius: '10px' }}>
+          <Plus size={17} /> Create New Course
+        </Link>
       </div>
 
       {myCourses.length === 0 ? (
@@ -321,53 +376,7 @@ const InstructorDashboard = () => {
         </div>
       )}
 
-      <div className="section-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <Globe size={24} className="text-secondary" />
-          <h2 style={{ fontSize: '1.75rem' }}>Global Instructor Feed</h2>
-        </div>
-        <Link to="/instructor/catalog" className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', borderRadius: '100px', padding: '0.6rem 1.5rem', fontSize: '0.9rem' }}>
-           View All Courses <ExternalLink size={18} />
-        </Link>
-      </div>
 
-      <div className="horizontal-scroll-container" style={{ overflowX: 'auto', paddingBottom: '1.5rem', marginBottom: '-1.5rem' }}>
-        <div className="courses-grid" style={{ display: 'flex', gap: '2rem', minWidth: 'max-content', paddingRight: '2rem' }}>
-          {otherCourses.slice(0, 10).map((course, index) => (
-            <motion.div 
-              key={course.id} 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.1 }}
-              className="course-card-premium glass-panel"
-              style={{ opacity: 0.85, width: '340px', flexShrink: 0 }}
-            >
-              <div style={{ padding: '1.5rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: '700', background: 'var(--bg-subtle)', padding: '0.25rem 0.75rem', borderRadius: '100px', color: 'var(--text-secondary)' }}>
-                    By {course.instructor_name}
-                  </span>
-                  <Globe size={16} className="text-muted" />
-                </div>
-                <h3 style={{ fontSize: '1.25rem', marginBottom: '0.5rem' }}>{course.title}</h3>
-                <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '1rem', display: '-webkit-box', WebkitLineClamp: '2', WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{course.description || "No description provided."}</p>
-                
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
-                  {course.average_rating > 0 && (
-                    <div style={{ fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'var(--bg-subtle)', padding: '0.2rem 0.5rem', borderRadius: '4px', color: '#f59e0b', fontWeight: '800' }}>
-                      ⭐ {Number(course.average_rating).toFixed(1)}
-                    </div>
-                  )}
-                </div>
-  
-                <Link to={`/student/courses/${course.id}/preview`} className="nav-btn-outline" style={{ width: '100%', justifyContent: 'center', gap: '0.5rem', textDecoration: 'none' }}>
-                  View Details <ExternalLink size={18} />
-                </Link>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
 
       {/* Edit Course Modal */}
       <AnimatePresence>

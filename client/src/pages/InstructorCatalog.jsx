@@ -31,7 +31,7 @@ const InstructorCatalog = () => {
   const fetchCourses = async () => {
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses', {
+      const res = await fetch('http://localhost:5000/api/instructor/courses', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
@@ -45,7 +45,8 @@ const InstructorCatalog = () => {
     }
   };
 
-  const filteredCourses = courses.filter(c => 
+  const otherCourses = courses.filter(c => c.instructor_id !== user.id);
+  const filteredCourses = otherCourses.filter(c => 
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
     (c.instructor_name && c.instructor_name.toLowerCase().includes(searchQuery.toLowerCase()))
   );

@@ -11,12 +11,16 @@ const InstructorCourseForm = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const [isPaid, setIsPaid] = useState(false);
+  const [price, setPrice] = useState('');
+  const [hasPaymentDetails, setHasPaymentDetails] = useState(false);
 
   useEffect(() => {
+    const token = localStorage.getItem('token');
+    // Fetch instructor profile
     const fetchProfile = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/auth/profile', {
+        const res = await fetch('http://localhost:5000/api/auth/profile', {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -27,7 +31,25 @@ const InstructorCourseForm = () => {
         console.error('Failed to fetch profile', err);
       }
     };
+    // Fetch payment details to verify if instructor has set up payout info
+    const fetchPaymentDetails = async () => {
+      try {
+        const res = await fetch('http://localhost:5000/api/instructor/payment-details', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setHasPaymentDetails(!!data?.configured);
+        } else {
+          setHasPaymentDetails(false);
+        }
+      } catch (err) {
+        console.error('Failed to fetch payment details', err);
+        setHasPaymentDetails(false);
+      }
+    };
     fetchProfile();
+    fetchPaymentDetails();
   }, []);
 
   const handleSubmit = async (e) => {
@@ -40,19 +62,27 @@ const InstructorCourseForm = () => {
     }
 
     setLoading(true);
+    // Ensure payment details are set for paid courses
+    if (isPaid && !hasPaymentDetails) {
+      setError('Please configure your payment details before creating a paid course.');
+      setLoading(false);
+      return;
+    }
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/courses', {
+      const res = await fetch('http://localhost:5000/api/instructor/courses', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ 
-          title: title.trim(), 
-          description: description.trim(), 
-          benefits: benefits.filter(b => b.trim() !== '')
+        body: JSON.stringify({
+          title: title.trim(),
+          description: description.trim(),
+          benefits: benefits.filter(b => b.trim() !== ''),
+          is_paid: isPaid,
+          price: isPaid ? parseFloat(price) : 0
         }),
       });
 
@@ -195,7 +225,33 @@ const InstructorCourseForm = () => {
               style={{ minHeight: '150px', padding: '1rem 1.25rem', fontSize: '1rem', lineHeight: '1.6' }}
             />
           </div>
-
+            {/* Paid / Free Toggle */}
+            <div className="pricing-toggle" style={{ marginBottom: '1rem', display: 'flex', gap: '0.5rem' }}>
+              <button type="button" className={"pricing-btn " + (isPaid ? '' : 'active free')} onClick={() => setIsPaid(false)}>
+                Free
+              </button>
+              <button type="button" className={"pricing-btn " + (isPaid ? 'active paid' : '')} onClick={() => setIsPaid(true)}>
+                Paid
+              </button>
+            </div>
+            {isPaid && (
+              <div className="form-group" style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '1rem', fontWeight: '700', marginBottom: '0.75rem' }}>
+                  <DollarSign size={18} className="text-primary" /> Price (USD)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="e.g. 29.99"
+                  className="input-field"
+                  required={isPaid}
+                  style={{ padding: '1rem 1.25rem', fontSize: '1.05rem' }}
+                />
+              </div>
+            )}
 
 
           <div className="form-group" style={{ marginBottom: '2.5rem' }}>

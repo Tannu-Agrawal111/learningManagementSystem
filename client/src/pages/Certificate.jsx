@@ -11,25 +11,46 @@ const Certificate = () => {
   const navigate = useNavigate();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [certData, setCertData] = useState(null);
+  const [xpAwarded, setXpAwarded] = useState(0);
+  const [badgeAwarded, setBadgeAwarded] = useState('');
 
   useEffect(() => {
-    const fetchCourseDetails = async () => {
+    const fetchCourseAndClaim = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/student/courses/${courseId}`, {
+        
+        // 1. Fetch Course details
+        const courseRes = await fetch(`http://localhost:5000/api/student/courses/${courseId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
-        const data = await res.json();
-        if (res.ok) {
-          setCourse(data.course);
+        const courseData = await courseRes.json();
+        if (courseRes.ok) {
+          setCourse(courseData.course);
+        }
+
+        // 2. Claim/Generate authentic certificate via MongoDB
+        const claimRes = await fetch('http://localhost:5000/api/gamification/certificate/claim', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({ courseId })
+        });
+        const claimData = await claimRes.json();
+        if (claimRes.ok) {
+          setCertData(claimData.certificate);
+          setXpAwarded(claimData.xpAwarded);
+          setBadgeAwarded(claimData.badge);
         }
       } catch (err) {
-        console.error(err);
+        console.error('Certificate check failure:', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchCourseDetails();
+    fetchCourseAndClaim();
   }, [courseId]);
 
   const handlePrint = () => {
@@ -55,11 +76,37 @@ const Certificate = () => {
           <ArrowLeft size={18} /> Back to Course
         </button>
         <div style={{ display: 'flex', gap: '1rem' }}>
+          {certData?.pdfUrl && (
+            <a 
+              href={`http://localhost:5000${certData.pdfUrl}`} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="btn-primary" 
+              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none', background: 'linear-gradient(135deg, #10B981, #059669)' }}
+            >
+              <Download size={18} /> Download Official PDF
+            </a>
+          )}
           <button onClick={handlePrint} className="btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <Printer size={18} /> Print / Save as PDF
           </button>
         </div>
       </div>
+
+      {xpAwarded > 0 && (
+        <div className="no-print" style={{ 
+          background: 'rgba(16,185,129,0.1)', 
+          border: '1px solid rgba(16,185,129,0.3)', 
+          padding: '1rem', 
+          borderRadius: '8px', 
+          textAlign: 'center', 
+          marginBottom: '2rem', 
+          color: '#10B981', 
+          fontWeight: 'bold' 
+        }}>
+          🎉 Certified Graduate Badge Earned (+{xpAwarded} XP!)
+        </div>
+      )}
 
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
@@ -104,8 +151,8 @@ const Certificate = () => {
                 </div>
               </div>
 
-              <div className="cert-id">
-                Certificate ID: LMS-{courseId}-{user?.id}-{Date.now().toString().slice(-6)}
+              <div className="cert-id" style={{ wordBreak: 'break-all', padding: '0 2rem' }}>
+                {certData ? `Verification Hash: ${certData.verificationHash}` : `Certificate ID: LMS-${courseId}-${user?.id}`}
               </div>
             </div>
           </div>

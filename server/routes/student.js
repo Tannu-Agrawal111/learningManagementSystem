@@ -3,6 +3,12 @@ const router = express.Router();
 const db = require('../db');
 const { authMiddleware, enrollmentMiddleware } = require('../middleware/auth');
 const fs = require('fs');
+// Import models for certificate generation
+const User = require('../models/User');
+const Course = require('../models/Course');
+const { getOrCreateMongoUser, getOrCreateMongoCourse } = require('../utils/dbSync');
+// Import certificate generator for auto‑issuance upon course completion
+const { generatePDFCertificate } = require('../utils/certificateGenerator');
 const path = require('path');
 
 // Logging helper
@@ -216,12 +222,66 @@ router.get('/courses/:courseId/public', (req, res) => {
 });
 
 // @route POST /api/student/lessons/:lessonId/complete
-router.post('/lessons/:lessonId/complete', (req, res) => {
+router.post('/lessons/:lessonId/complete', async (req, res) => {
   const { lessonId } = req.params;
   const studentId = req.user.id;
-  db.run('INSERT INTO progress (student_id, lesson_id) VALUES (?, ?)', [studentId, lessonId], (err) => {
+
+  // Record progress for this lesson
+  db.run('INSERT INTO progress (student_id, lesson_id) VALUES (?, ?)', [studentId, lessonId], async (err) => {
     if (err) return res.status(500).json({ message: 'Failed to mark complete' });
-    res.json({ message: 'Completed' });
+
+    try {
+      // Determine the course to which this lesson belongs
+      const lessonRow = await new Promise((resolve, reject) => {
+        db.get('SELECT course_id FROM lessons WHERE id = ?', [lessonId], (e, row) => e ? reject(e) : resolve(row));
+      });
+      if (!lessonRow) return res.status(404).json({ message: 'Lesson not found' });
+      const courseId = lessonRow.course_id;
+
+      // Count total lessons for the course
+      const totalRow = await new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) AS total FROM lessons WHERE course_id = ?', [courseId], (e, row) => e ? reject(e) : resolve(row));
+      });
+      const totalLessons = totalRow.total;
+
+      // Count completed lessons for this student in the course
+      const completedRow = await new Promise((resolve, reject) => {
+        db.get('SELECT COUNT(*) AS completed FROM progress p JOIN lessons l ON p.lesson_id = l.id WHERE p.student_id = ? AND l.course_id = ?', [studentId, courseId], (e, row) => e ? reject(e) : resolve(row));
+      });
+      const completedLessons = completedRow.completed;
+
+      // If the student has finished every lesson, generate a certificate (if not already issued)
+      if (completedLessons === totalLessons) {
+        // Check existing certificate entry
+        const certCheck = await new Promise((resolve, reject) => {
+          db.get('SELECT id FROM payments WHERE student_id = ? AND course_id = ? AND verification_hash IS NOT NULL', [studentId, courseId], (e, row) => e ? reject(e) : resolve(row));
+        });
+        if (!certCheck) {
+          const student = await getOrCreateMongoUser(studentId);
+          const course = await getOrCreateMongoCourse(courseId);
+          const { pdfUrl, verificationHash } = await generatePDFCertificate(
+            student.name,
+            course.title,
+            studentId.toString(),
+            courseId.toString()
+          );
+          // Store certificate verification record (reuse payments table as storage)
+          db.run(
+            `INSERT INTO payments (student_id, instructor_id, course_id, amount, status, verification_hash, stripe_session_id) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [studentId, course.instructor_id, courseId, 0, 'succeeded', verificationHash, null],
+            (e) => {
+              if (e) console.error('Certificate DB insert error:', e.message);
+            }
+          );
+        }
+      }
+    } catch (e) {
+      console.error('Auto‑certificate generation error:', e);
+      // Continue without breaking the user flow – certificate generation is best‑effort
+    }
+
+    // Respond to the client after all background work is queued
+    return res.json({ message: 'Completed' });
   });
 });
 

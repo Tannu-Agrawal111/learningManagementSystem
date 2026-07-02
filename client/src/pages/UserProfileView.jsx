@@ -19,7 +19,7 @@ const UserProfileView = () => {
     const fetch_ = async () => {
       try {
         const token = localStorage.getItem('token');
-        const res = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/auth/profile/public/${userId}`, {
+        const res = await fetch(`http://localhost:5000/api/auth/profile/public/${userId}`, {
           headers: { 'Authorization': `Bearer ${token}` }
         });
         if (res.ok) {
@@ -28,7 +28,7 @@ const UserProfileView = () => {
             
             // If instructor, also fetch their courses
             if (userData.role === 'instructor') {
-                const resC = await fetch(`https://learningmanagementsystem-backend-lms.onrender.com/api/instructor/public/${userId}`, {
+                const resC = await fetch(`http://localhost:5000/api/instructor/public/${userId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (resC.ok) {
@@ -101,7 +101,7 @@ const UserProfileView = () => {
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ height: '20px', width: '1px', background: 'var(--border-color)' }}></span>
           <span style={{ fontWeight: '800', fontSize: '1.2rem', letterSpacing: '-0.02em' }}>
-            <span style={{ color: 'var(--primary)' }}>E</span>levate
+            <span style={{ color: 'var(--primary)' }}></span>
           </span>
         </div>
       </div>

@@ -76,16 +76,29 @@ function initDb() {
       UNIQUE(student_id, course_id)
     )`);
 
-    // Progress table
-    db.run(`CREATE TABLE IF NOT EXISTS progress (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      student_id INTEGER NOT NULL,
-      lesson_id INTEGER NOT NULL,
-      completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (student_id) REFERENCES users (id),
-      FOREIGN KEY (lesson_id) REFERENCES lessons (id),
-      UNIQUE(student_id, lesson_id)
-    )`);
+      // Lecture progress table for granular tracking
+      db.run(`CREATE TABLE IF NOT EXISTS lecture_progress (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        lecture_id INTEGER NOT NULL,
+        completed INTEGER DEFAULT 0,
+        last_position_seconds INTEGER DEFAULT 0,
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        FOREIGN KEY (lecture_id) REFERENCES lessons (id),
+        UNIQUE(user_id, lecture_id)
+      )`);
+
+      // Certificates table to store claimed credentials
+      db.run(`CREATE TABLE IF NOT EXISTS certificates (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        course_id INTEGER NOT NULL,
+        uuid TEXT NOT NULL,
+        pdf_url TEXT,
+        claimed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users (id),
+        FOREIGN KEY (course_id) REFERENCES courses (id)
+      )`);
 
     // Quizzes table
     db.run(`CREATE TABLE IF NOT EXISTS quizzes (
@@ -96,6 +109,20 @@ function initDb() {
       correct_answer TEXT NOT NULL,
       FOREIGN KEY (lesson_id) REFERENCES lessons (id)
     )`);
+
+      // Assessment submissions table (stores answers and proctoring incidents)
+      db.run(`CREATE TABLE IF NOT EXISTS assessment_submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        assessment_id INTEGER NOT NULL,
+        student_id INTEGER NOT NULL,
+        answers TEXT,
+        incidents TEXT,
+        submitted_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        score INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'in-progress',
+        FOREIGN KEY (assessment_id) REFERENCES assessments (id),
+        FOREIGN KEY (student_id) REFERENCES users (id)
+      )`);
 
     // Doubts table
     db.run(`CREATE TABLE IF NOT EXISTS doubts (
@@ -122,7 +149,24 @@ function initDb() {
       FOREIGN KEY (user_id) REFERENCES users (id)
     )`);
 
-    // Run migrations for existing databases
+    // Payments table to record transactions
+    db.run(`CREATE TABLE IF NOT EXISTS payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      student_id INTEGER NOT NULL,
+      instructor_id INTEGER NOT NULL,
+      course_id INTEGER,
+      amount REAL NOT NULL,
+      currency TEXT DEFAULT 'USD',
+      status TEXT CHECK( status IN ('pending','succeeded','failed') ) DEFAULT 'pending',
+      stripe_session_id TEXT,
+      pdf_url TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (student_id) REFERENCES users (id),
+      FOREIGN KEY (instructor_id) REFERENCES users (id),
+      FOREIGN KEY (course_id) REFERENCES courses (id)
+    )`, (err) => {});
+    // Payments migration for existing DB
+    db.run(`ALTER TABLE payments ADD COLUMN stripe_session_id TEXT`, (err) => {});
     runMigrations();
 
     console.log('Database tables initialized.');
