@@ -18,6 +18,10 @@ const paymentRoutes = require('../../server/routes/payments');
 
 const app = express();
 
+// Connect to MongoDB
+const connectMongoDB = require('../../server/db_mongo');
+connectMongoDB();
+
 // -------------------- security middleware --------------------
 app.use(helmet);
 app.use(cors({ origin: '*', credentials: true }));
