@@ -207,6 +207,7 @@ io.on('connection', (socket) => {
 });
 
 // Start Server
-server.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+// Start Server (disabled for Vercel serverless functions)
+// server.listen(PORT, () => {
+//   console.log(`Server is running on port ${PORT}`);
+// });
