@@ -1,6 +1,21 @@
 // client/api/index.js - Vercel serverless entry point
-// Use createRequire because client/package.json has "type": "module"
 import { createRequire } from 'node:module';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+import module from 'node:module';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Ensure server files can resolve packages installed in client/node_modules
+const clientNodeModules = path.resolve(__dirname, '..', 'node_modules');
+if (process.env.NODE_PATH) {
+  process.env.NODE_PATH = clientNodeModules + path.delimiter + process.env.NODE_PATH;
+} else {
+  process.env.NODE_PATH = clientNodeModules;
+}
+module.Module._initPaths();
+
 const require = createRequire(import.meta.url);
 
 require('dotenv').config();
@@ -51,4 +66,4 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-export default app; // ES module export for Vercel serverless function
+export default app;
