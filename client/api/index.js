@@ -1,4 +1,8 @@
-// client/api/index.js - Vercel serverless entry point when built from client directory
+// client/api/index.js - Vercel serverless entry point
+// Use createRequire because client/package.json has "type": "module"
+import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url);
+
 require('dotenv').config();
 
 const express = require('express');
@@ -47,4 +51,4 @@ app.get('/api/status', (req, res) => {
   });
 });
 
-module.exports = app; // Export for Vercel serverless function
+export default app; // ES module export for Vercel serverless function
