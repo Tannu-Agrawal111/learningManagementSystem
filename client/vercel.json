@@ -1,5 +1,5 @@
 {
-  "installCommand": "npm install && cd ../server && npm install",
+  "installCommand": "npm install && npm install --prefix ../server && cp -R ../server ./server",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index.js" }
   ]
